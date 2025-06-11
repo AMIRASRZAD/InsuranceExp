@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Practice Result: Applicant {{ customer_number }}</title>
+    <title>Practice Result: Individual {{ customer_number }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
@@ -13,7 +13,7 @@
 </head>
 <body>
     <div class="container">
-        <h3 class="text-center mb-4">Practice Result: Applicant {{ customer_number }} of 5</h3>
+        <h3 class="text-center mb-4">Practice Result: Individual {{ customer_number }} of 10</h3>
         <div class="card p-4 shadow-sm">
             <table class="table table-bordered">
                 <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
@@ -24,7 +24,7 @@
                 <tr><th>Region</th><td>{{ customer_info['region'] }}</td></tr>
             </table>
             <p><strong>Your Guess:</strong> ${{ initial_guess|round(2) }}</p>
-            <p><strong>True Charge:</strong> ${{ true_charge|round(2) }}</p>
+            <p><strong>True Charge:</strong> ${{ true_charge|round(0) }}</p>
             <form action="/practice" method="GET">
                 <button type="submit" class="btn btn-primary w-100">Next Practice</button>
             </form>

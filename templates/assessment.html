@@ -3,20 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Applicant {{ customer_number }} of 20</title>
+    <title>Individual {{ customer_number }} of 20</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
         .container { max-width: 600px; margin-top: 50px; }
         .table th { width: 40%; }
-        .slider-container { position: relative; }
-        .mean-marker { position: absolute; top: -20px; left: 13.27%; border-left: 2px solid #D32F2F; height: 30px; }
-        .mean-label { position: absolute; top: -40px; left: 13.27%; transform: translateX(-50%); color: #D32F2F; font-size: 0.9rem; }
+        .slider-container { position: relative; margin: 40px 0; }
+        .slider-min, .slider-max, .slider-avg { position: absolute; top: 20px; font-size: 0.9rem; color: #495057; }
+        .slider-min { left: 0; }
+        .slider-max { right: 0; }
+        .slider-avg { left: 18.96%; transform: translateX(-50%); } /* 13270/70000 */
+        .tick { position: absolute; top: 0; border-left: 2px solid #6c757d; height: 10px; }
+        .tick-min { left: 0; }
+        .tick-max { right: 0; }
+        .tick-avg { left: 18.96%; }
+        .form-range { height: 8px; background: #007bff; border-radius: 4px; }
+        .form-range::-webkit-slider-thumb {
+            width: 16px; height: 16px; background: #dc3545; border: none;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            transform: rotate(45deg); cursor: pointer;
+        }
+        .form-range::-moz-range-thumb {
+            width: 16px; height: 16px; background: #dc3545; border: none;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            transform: rotate(45deg); cursor: pointer;
+        }
+        .form-range::-webkit-slider-runnable-track { background: #007bff; }
+        .form-range::-moz-range-track { background: #007bff; }
+        .charge-input { width: 120px; display: inline-block; margin-left: 10px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h3 class="text-center mb-4">Applicant {{ customer_number }} of 20</h3>
+        <h3 class="text-center mb-4">Individual {{ customer_number }} of 20</h3>
         <div class="card p-4 shadow-sm">
             <table class="table table-bordered">
                 <tr><th>Age</th><td>{{ customer_info['age'] }} (Avg: {{ averages['age'] }})</td></tr>
@@ -28,13 +48,17 @@
             </table>
             <form action="/task" method="POST">
                 <div class="mb-3">
-                    <label class="form-label">Guess Insurance Charge ($1–$100,000):</label>
+                    <label class="form-label">Guess Insurance Charge ($1–$70,000):</label>
                     <div class="slider-container">
-                        <div class="mean-marker"></div>
-                        <div class="mean-label">Avg: $13,270</div>
-                        <input type="range" class="form-range" id="initial_guess" name="initial_guess" min="1" max="100000" value="13270">
+                        <span class="slider-min">$1</span>
+                        <span class="slider-max">$70,000</span>
+                        <span class="slider-avg">Avg: $13,270</span>
+                        <div class="tick tick-min"></div>
+                        <div class="tick tick-max"></div>
+                        <div class="tick tick-avg"></div>
+                        <input type="range" class="form-range" id="initial_guess" min="1" max="70000" step="1" value="13270">
                     </div>
-                    <p class="text-muted">Current: $<span id="guess_value">13270</span></p>
+                    <p class="text-muted">Your Estimated Insurance Charge: $<input type="number" class="charge-input" id="charge_value" name="initial_guess_value" min="1" max="70000" value="13270" step="0.01"></p>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Submit Guess</button>
             </form>
@@ -42,9 +66,22 @@
     </div>
     <script>
         const slider = document.getElementById('initial_guess');
-        const output = document.getElementById('guess_value');
-        output.textContent = slider.value;
-        slider.oninput = function() { output.textContent = this.value; }
+        const input = document.getElementById('charge_value');
+
+        // Initialize input value
+        input.value = slider.value;
+
+        slider.oninput = function() {
+            input.value = parseFloat(this.value).toFixed(2);
+        };
+
+        input.oninput = function() {
+            let value = parseFloat(this.value);
+            if (value < 1) value = 1;
+            if (value > 70000) value = 70000;
+            this.value = value.toFixed(2);
+            slider.value = value;
+        };
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

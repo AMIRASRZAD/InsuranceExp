@@ -9,6 +9,8 @@ import json
 import random
 import time
 import logging
+import matplotlib
+matplotlib.use('Agg')  # Non-GUI backend
 import matplotlib.pyplot as plt
 import io
 import base64
@@ -30,28 +32,13 @@ db_pool = psycopg2.pool.SimpleConnectionPool(
     password=os.environ.get('DB_PASSWORD', 'REDACTED'),
     sslmode='require'
 )
-'''
-# Load CSV (assumed uploaded, using provided schema)
-# Placeholder: Replace with actual CSV path after upload
-df = pd.DataFrame({
-    'age': [31, 60, 31, 18, 33],
-    'sex': ['female', 'male', 'male', 'female', 'female'],
-    'bmi': [38.095, 32.8, 29.81, 38.665, 35.53],
-    'children': [1, 0, 0, 2, 0],
-    'smoker': ['yes', 'yes', 'yes', 'no', 'yes'],
-    'region': ['northeast', 'southwest', 'southeast', 'northeast', 'northwest'],
-    'true_charges': [58571, 52591, 19350, 3393, 55135],
-    'predicted_charges': [42710, 40164, 27534, 8583, 38827],
-    'prediction_error': [15862, 12427, 8183, 5190, 16309],
-    'total_uncertainty_std': [3830, 5892, 6530, 10384, 4454],
-    'epistemic_uncertainty_std': [1211, 1065, 996, 1294, 798],
-    'aleatoric_uncertainty_std': [3634, 5795, 6453, 10303, 4382],
-    'uncertainty_level': [1, 1, 1, 1, 2],
-    'condition': ['epistemic', 'epistemic', 'epistemic', 'epistemic', 'epistemic']
-})
-'''
-CSV_URL = "https://drive.google.com/uc?id=1z_FUKc-_5n3Z5gqTbWjgqI4HETHzaO4zP"
+
+# Load CSV
+CSV_URL = "https://drive.google.com/uc?id=1z_FUKc-_5n3Z5gqTbWjgI4HETHzaO4zP"
 df = pd.read_csv(CSV_URL)
+
+
+
 
 for col in ['age', 'children']:
     df[col] = df[col].astype(int)
@@ -61,6 +48,13 @@ df['sex_enc'] = df['sex'].map({'male': 1, 'female': 0})
 df['smoker_enc'] = df['smoker'].map({'yes': 1, 'no': 0})
 region_map = {'northeast': 0, 'northwest': 1, 'southeast': 2, 'southwest': 3}
 df['region_enc'] = df['region'].map(region_map)
+# Handle uncertainty_level based on condition
+df['uncertainty_level'] = df.apply(
+    lambda x: 1 if pd.isna(x['uncertainty_level']) or x['uncertainty_level'] == 'NA' or x['condition'] in ['AI_only', 'practice']
+    else x['uncertainty_level'], axis=1
+)
+df['uncertainty_level'] = df['uncertainty_level'].astype(int)
+
 
 # Define averages
 AVERAGES = {
@@ -70,23 +64,24 @@ AVERAGES = {
     'charges': 13270
 }
 
-# Participant counts for conditions (1, 2, 3)
+# Participant counts for conditions (1: AI, 2: Epistemic, 3: Aleatoric)
 PARTICIPANT_COUNTS = {1: 0, 2: 0, 3: 0}
-MAX_PER_CONDITION = 80  # For 240 users
+MAX_PER_CONDITION = 80
 PARTICIPANT_ORDER = []
 
 def epistemic_charts(uncertainty_level, task_region):
-    regions = ['northeast', 'northwest', 'southeast', 'southwest']
-    task_region_idx = regions.index(task_region)
-    volumes = [0] * 4  # 0=low, 1=moderate, 2=high
+    regions = ['Northeast', 'Northwest', 'Southeast', 'Southwest']
+    task_region_idx = [r.lower() for r in regions].index(task_region.lower())
+    volumes = [0.1] * 4  # Default to low
+    labels = ['Low', 'Moderate', 'High']
     if uncertainty_level == 1:
-        volumes = [1, 1, 0, 0]
+        volumes = [1, 1, 0.1, 0.1]
         if task_region_idx in [2, 3]:
-            volumes[task_region_idx], volumes[2 if task_region_idx == 3 else 3] = 0, 0
+            volumes[task_region_idx], volumes[2 if task_region_idx == 3 else 3] = 0.1, 0.1
         else:
-            volumes[task_region_idx], volumes[0 if task_region_idx == 1 else 1] = 0, 0
+            volumes[task_region_idx], volumes[0 if task_region_idx == 1 else 1] = 0.1, 0.1
     elif uncertainty_level == 2:
-        volumes = [1, 1, 0, 0]
+        volumes = [1, 1, 0.1, 0.1]
         volumes[task_region_idx] = 1
         other_moderate = (task_region_idx + 1) % 4
         volumes[other_moderate] = 1
@@ -104,8 +99,8 @@ def epistemic_charts(uncertainty_level, task_region):
     datasets = [{
         'label': 'Data Volume',
         'data': volumes,
-        'backgroundColor': ['#FF6B6B' if v == 0 else '#FFD93D' if v == 1 else '#4CAF50' for v in volumes],
-        'borderColor': ['#D32F2F' if v == 0 else '#FBC02D' if v == 1 else '#388E3C' for v in volumes],
+        'backgroundColor': ['#FF6B6B' if v == 0.1 else '#FFD93D' if v == 1 else '#4CAF50' for v in volumes],
+        'borderColor': ['#D32F2F' if v == 0.1 else '#FBC02D' if v == 1 else '#388E3C' for v in volumes],
         'borderWidth': 1
     }]
 
@@ -117,12 +112,38 @@ def epistemic_charts(uncertainty_level, task_region):
         },
         'options': {
             'scales': {
-                'y': {'beginAtZero': True, 'max': 2.5, 'ticks': {'callback': 'function(value) { return ["Low", "Moderate", "High"][value]; }'}},
-                'x': {'title': {'display': True, 'text': 'Region'}}
+                'y': {
+                    'beginAtZero': True,
+                    'max': 2.5,
+                    'ticks': {'callback': 'function(value) { return ["Low", "Moderate", "High"][Math.round(value)]; }'}
+                },
+                'x': {
+                    'title': {'display': True, 'text': 'Region', 'font': {'weight': 'bold', 'size': 14}}
+                }
             },
             'plugins': {
-                'legend': {'display': False},
-                'title': {'display': True, 'text': 'AI Training Data Volume by Region'}
+                'legend': {
+                    'display': True,
+                    'labels': {
+                        'generateLabels': """function(chart) {
+                            return [
+                                {text: 'Low', fillStyle: '#FF6B6B', strokeStyle: '#D32F2F'},
+                                {text: 'Moderate', fillStyle: '#FFD93D', strokeStyle: '#FBC02D'},
+                                {text: 'High', fillStyle: '#4CAF50', strokeStyle: '#388E3C'}
+                            ];
+                        }"""
+                    }
+                },
+                'title': {
+                    'display': True,
+                    'text': 'Available Individual Information for AI Model'
+                },
+                'datalabels': {
+                    'display': True,
+                    'anchor': 'end',
+                    'align': 'top',
+                    'formatter': 'function(value) { return value == 0.1 ? "Low" : value == 1 ? "Moderate" : "High"; }'
+                }
             }
         }
     }
@@ -130,18 +151,18 @@ def epistemic_charts(uncertainty_level, task_region):
 def aleatoric_charts(level, predicted_charge, error):
     skewness = random.uniform(0.5, 1.5) if level in [1, 2] else random.uniform(0, 0.5)
     scale = 10000 if level == 1 else 7500 if level == 2 else 5000 if level == 3 else 2500
-    error_range = abs(error) * 1.5
-    x = np.linspace(predicted_charge - error_range, predicted_charge + error_range * 1.5, 100)
+    error_range = 15000  # Fixed range
+    x = np.linspace(predicted_charge - error_range, predicted_charge + error_range, 100)
     y = skewnorm.pdf(x, skewness, loc=predicted_charge, scale=scale)
     y = y / y.max() * (5 if level == 1 else 6 if level == 2 else 7 if level == 3 else 8)
 
     plt.figure(figsize=(6, 3))
-    plt.plot(x, y, color='#4CAF50', label='Predictive Distribution')
+    plt.plot(x, y, color='#4CAF50', label='Likelihood Distribution')
     plt.fill_between(x, y, alpha=0.3, color='#4CAF50')
     plt.axvline(predicted_charge, color='#D32F2F', linestyle='--', label='Predicted Charge')
     plt.xlabel('Insurance Charge (USD)')
-    plt.ylabel('Density')
-    plt.title(f'Predictive Distribution (Uncertainty Level {level})')
+    plt.ylabel('Likelihood')
+    plt.title(f'Likelihood of Charges for Different Values (Level {level})')
     plt.legend()
     plt.tight_layout()
 
@@ -152,9 +173,26 @@ def aleatoric_charts(level, predicted_charge, error):
     plt.close()
     return img_base64
 
-def sample_rows():
-    sampled_rows = df.sample(20, random_state=np.random.randint(1000)).to_dict('records')
+def sample_rows(condition):
+    condition_map = {1: 'AI_only', 2: 'epistemic', 3: 'aleatoric'}
+    condition_str = condition_map[condition]
+    valid_rows = df[df['condition'].str.lower() == condition_str.lower()]
+    logging.debug(f"Unique condition values in CSV: {df['condition'].unique()}")
+    if len(valid_rows) == 0:
+        logging.warning(f"No rows for condition {condition_str}, sampling from all valid rows")
+        valid_rows = df[df['condition'].isin(['AI_only', 'epistemic', 'aleatoric'])]
+    if len(valid_rows) < 20:
+        logging.warning(f"Insufficient rows ({len(valid_rows)}) for condition {condition_str}, sampling with replacement")
+        sampled_rows = valid_rows.sample(20, replace=True, random_state=np.random.randint(1000)).to_dict('records')
+    else:
+        sampled_rows = valid_rows.sample(20, random_state=np.random.randint(1000)).to_dict('records')
+    for i, row in enumerate(sampled_rows):
+        row['ID'] = i + 1
     return sampled_rows
+
+
+def get_practice_data():
+    return df.head(10).to_dict('records')  # First 10 rows for practice
 
 @app.route('/')
 def index():
@@ -166,7 +204,6 @@ def start():
     if not available_conditions:
         return "Experiment is full!", 403
 
-    # Consecutive assignment: cycle through 1, 2, 3
     condition = (len(PARTICIPANT_ORDER) % 3) + 1
     if condition not in available_conditions:
         return "Condition full, try again later.", 403
@@ -182,7 +219,7 @@ def start():
     session['participant_id'] = participant_id
     session['participant_name'] = participant_name
     session['practice_index'] = 0
-    session['tasks'] = sample_rows()
+    session['tasks'] = sample_rows(condition)
     session['task_index'] = 0
     session['responses'] = []
 
@@ -191,22 +228,22 @@ def start():
 @app.route('/practice', methods=['GET', 'POST'])
 def practice():
     practice_index = session.get('practice_index', 0)
-    practice_data = df.head(5).to_dict('records')  # First 5 rows for practice
+    practice_data = get_practice_data()
     if practice_index >= len(practice_data):
-        return redirect(url_for('task'))
+        return redirect(url_for('transition'))
 
     practice_row = practice_data[practice_index]
     customer_number = practice_index + 1
 
     if request.method == 'POST':
-        initial_guess = request.form.get('initial_guess')
+        initial_guess = request.form.get('initial_guess_value')
         try:
             initial_guess = float(initial_guess)
-            if initial_guess < 1 or initial_guess > 100000:
+            if initial_guess < 1 or initial_guess > 70000:
                 raise ValueError
         except (ValueError, TypeError):
             logging.error(f"Invalid initial_guess: {initial_guess}")
-            return "Invalid charge guess. Please select a value between 1 and 100,000 USD.", 400
+            return "Invalid charge guess. Please select a value between 1 and 70,000 USD.", 400
 
         session['practice_index'] += 1
         return render_template('practice_result.html',
@@ -228,35 +265,64 @@ def practice():
                          customer_number=customer_number,
                          averages=AVERAGES)
 
+@app.route('/transition')
+def transition():
+    return render_template('transition.html')
+
+
 @app.route('/task', methods=['GET', 'POST'])
 def task():
     task_index = session.get('task_index', 0)
     if task_index >= len(session.get('tasks', [])):
+        max_retries = 3
         conn = None
-        try:
+        for attempt in range(max_retries):
             conn = db_pool.getconn()
-            with conn.cursor() as cur:
-                for response in session.get('responses', []):
-                    task_data = next(t for t in session['tasks'] if t['ID'] == response['ID'])
-                    cur.execute(
-                        "INSERT INTO responses (participant_id, task_number, condition, initial_guess, final_guess, predicted_charge, uncertainty_level, "
-                        "true_charge, age, sex, bmi, children, smoker, region, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std) "
-                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                        (session['participant_id'], response['Task_Number'], response['Condition'], response['Initial_Guess'],
-                         response['Final_Guess'], response['Predicted_Charge'], response['Uncertainty_Level'],
-                         task_data['true_charges'], task_data['age'], task_data['sex'], task_data['bmi'],
-                         task_data['children'], task_data['smoker'], task_data['region'], task_data['prediction_error'],
-                         task_data['total_uncertainty_std'], task_data['epistemic_uncertainty_std'], task_data['aleatoric_uncertainty_std'])
-                    )
-                conn.commit()
-        except Exception as e:
-            if conn:
+            try:
+                with conn.cursor() as cur:
+                    for response in session.get('responses', []):
+                        task_data = next(t for t in session['tasks'] if t['ID'] == response['ID'])
+                        uncertainty_level = task_data.get('uncertainty_level', 1)
+                        try:
+                            uncertainty_level = int(uncertainty_level)
+                            if uncertainty_level < 1 or uncertainty_level > 4:
+                                logging.error(f"Invalid uncertainty_level: {uncertainty_level}, setting to 1")
+                                uncertainty_level = 1
+                        except (ValueError, TypeError):
+                            logging.error(f"Non-integer uncertainty_level: {uncertainty_level}, setting to 1")
+                            uncertainty_level = 1
+                        cur.execute(
+                            "INSERT INTO responses (participant_id, task_number, condition, initial_guess, final_guess, predicted_charge, uncertainty_level, "
+                            "true_charge, age, sex, bmi, children, smoker, region, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std) "
+                            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                            (session['participant_id'], response['Task_Number'], response['Condition'], response['Initial_Guess'],
+                             response['Final_Guess'], response['Predicted_Charge'], uncertainty_level,
+                             task_data['true_charges'], task_data['age'], task_data['sex'], task_data['bmi'],
+                             task_data['children'], task_data['smoker'], task_data['region'], task_data['prediction_error'],
+                             task_data['total_uncertainty_std'], task_data['epistemic_uncertainty_std'], task_data['aleatoric_uncertainty_std'])
+                        )
+                    conn.commit()
+                logging.info("Database commit successful")
+                break
+            except psycopg2.OperationalError as e:
+                logging.error(f"Database OperationalError on attempt {attempt + 1}: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                conn.close()
+                db_pool.putconn(conn, close=True)
+                return "Database connection failed after retries", 500
+            except Exception as e:
+                logging.error(f"Database error: {str(e)}")
                 conn.rollback()
-            logging.error(f"Database error: {str(e)}")
-            return "Error saving data", 500
-        finally:
-            if conn:
-                db_pool.putconn(conn)
+                db_pool.putconn(conn, close=True)
+                return f"Error saving data: {str(e)}", 500
+            finally:
+                if conn and not conn.closed:
+                    db_pool.putconn(conn)
+        session.pop('responses', None)
+        session.pop('tasks', None)
+        session.pop('task_index', None)
         return render_template('end.html')
 
     task_data = session['tasks'][task_index]
@@ -264,14 +330,14 @@ def task():
     customer_number = task_index + 1
 
     if request.method == 'POST':
-        initial_guess = request.form.get('initial_guess')
+        initial_guess = request.form.get('initial_guess_value')
         try:
             initial_guess = float(initial_guess)
-            if initial_guess < 1 or initial_guess > 100000:
+            if initial_guess < 1 or initial_guess > 70000:
                 raise ValueError
         except (ValueError, TypeError):
             logging.error(f"Invalid initial_guess: {initial_guess}")
-            return "Invalid charge guess. Please select a value between 1 and 100,000 USD.", 400
+            return "Invalid charge guess. Please select a value between 1 and 70,000 USD.", 400
         session['current_initial_guess'] = initial_guess
         return redirect(url_for('stage2'))
 
@@ -298,14 +364,14 @@ def stage2():
 
     if request.method == 'POST':
         if condition == 1 or 'show_ai_info' in session:
-            final_guess = request.form.get('final_guess')
+            final_guess = request.form.get('final_guess_value')
             try:
                 final_guess = float(final_guess)
-                if final_guess < 1 or final_guess > 100000:
+                if final_guess < 1 or final_guess > 70000:
                     raise ValueError
             except (ValueError, TypeError):
                 logging.error(f"Invalid final_guess: {final_guess}")
-                return "Invalid charge guess. Please select a value between 1 and 100,000 USD.", 400
+                return "Invalid charge guess. Please select a value between 1 and 70,000 USD.", 400
             session['current_final_guess'] = final_guess
             return redirect(url_for('stage3'))
         else:
@@ -318,20 +384,35 @@ def stage2():
     elif condition == 3:
         info_data = aleatoric_charts(task_data['uncertainty_level'], predicted_charge, task_data['prediction_error'])
 
+    customer_info = {
+        'age': task_data['age'],
+        'sex': task_data['sex'],
+        'bmi': task_data['bmi'],
+        'children': task_data['children'],
+        'smoker': task_data['smoker'],
+        'region': task_data['region']
+    }
+
     return render_template(f'review_condition{condition}.html',
                          predicted_charge=predicted_charge,
                          initial_guess=initial_guess,
                          show_ai_info=session.get('show_ai_info', False),
                          info_data=info_data,
-                         customer_number=customer_number)
+                         customer_number=customer_number,
+                         customer_info=customer_info)
+
 
 @app.route('/stage3', methods=['GET', 'POST'])
 def stage3():
     task_index = session.get('task_index', 0)
-    task_data = session['tasks'][task_index]
+    tasks = session.get('tasks', [])
+    if task_index >= len(tasks):
+        logging.error(f"Invalid task_index: {task_index}, tasks length: {len(tasks)}")
+        return redirect(url_for('task'))
+
+    task_data = tasks[task_index]
     initial_guess = session.get('current_initial_guess')
     final_guess = session.get('current_final_guess')
-    customer_number = task_index + 1
 
     if request.method == 'POST':
         session['responses'].append({
@@ -346,10 +427,12 @@ def stage3():
         })
         session['task_index'] += 1
         session.pop('show_ai_info', None)
+        session.pop('current_initial_guess', None)
+        session.pop('current_final_guess', None)
         return redirect(url_for('task'))
 
     return render_template('results.html',
-                         customer_number=customer_number,
+                         customer_number=task_index + 1,
                          initial_guess=initial_guess,
                          final_guess=final_guess,
                          ai_prediction=task_data['predicted_charges'])
