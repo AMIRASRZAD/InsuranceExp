@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insurance Charge Study</title>
+    <title>Medical Cost Estimation Study</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f8f9fa; }
@@ -16,25 +16,31 @@
 </head>
 <body>
     <div class="container">
-        <h1 class="text-center mb-4">Insurance Charge Study</h1>
-        <p class="text-center">Thank you for participating in our research on estimating health insurance charges!</p>
+        <h1 class="text-center mb-4">Medical Cost Estimation Study</h1>
+        <p class="text-center">Thank you for participating in our research to estimate medical costs!</p>
         <div class="card p-4 mb-4 shadow-sm">
-            <h4>What You'll Do</h4>
+            <h4>About the Study</h4>
+            <p>You will estimate medical costs—the expenses for healthcare services individuals incur. You’ll base your estimates on the following individual information:</p>
             <ul>
-                <li><strong>Practice (5 profiles):</strong> View age, sex, BMI, children, smoker status, region; guess charges ($1–$100,000); see true charges.</li>
-                <li><strong>Main Study (20 profiles):</strong> Guess charges, view AI prediction or uncertainty info, make a final guess.</li>
-                <li><strong>Time:</strong> ~10–15 minutes.</li>
+                <li><strong>Age</strong></li>
+                <li><strong>Sex</strong></li>
+                <li><strong>BMI (Body Mass Index)</strong></li>
+                <li><strong>Number of Children</strong></li>
+                <li><strong>Smoker Status</strong></li>
+                <li><strong>Region of Residence</strong> (Northeast, Northwest, Southeast, Southwest)</li>
             </ul>
-            <h4>Your Role</h4>
-            <p>Estimate insurance charges using a slider (default: $13,270, average charge) based on customer profiles.</p>
-            <h4>Why It Matters</h4>
-            <p>Your guesses help us study how AI tools influence charge estimation, improving insurance pricing.</p>
+            <h4>Practice (10 Individuals)</h4>
+            <p>To help you make accurate estimates, you’ll review information for 10 individuals and see their actual medical charges.</p>
+            <h4>Main Study</h4>
+            <p>You’ll view the same type of information as in practice, estimate charges using a slider (default: $13,270, average charge), then see AI predictions and information (not necessarily true charges). You can adjust your estimate afterward. Your performance will be evaluated based on the accuracy of your estimates.</p>
+            <h4>Time</h4>
+            <p>~10–15 minutes</p>
             <form action="/start" method="POST" class="mt-4">
                 <div class="mb-3">
                     <label for="participant_name" class="form-label">Name (optional):</label>
                     <input type="text" class="form-control" id="participant_name" name="participant_name">
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Start Experiment</button>
+                <button type="submit" class="btn btn-primary w-100">Start Estimation</button>
             </form>
         </div>
     </div>
