@@ -3,25 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Summary: Individual {{ customer_number }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #f8f9fa; }
-        .container { max-width: 600px; margin-top: 50px; }
-    </style>
+    <title>Summary: Individual {{ customer_number }} of 16</title>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
-        <h3 class="text-center mb-4">Summary: Individual {{ customer_number }} of 20</h3>
-        <div class="card p-4 shadow-sm">
-            <p><strong>Your Initial Estimate:</strong> ${{ initial_guess|round(2) }}</p>
-            <p><strong>AI Prediction:</strong> ${{ ai_prediction|round(2) }}</p>
-            <p><strong>Your Final Estimate:</strong> ${{ final_guess|round(2) }}</p>
-            <form action="/stage3" method="POST">
-                <button type="submit" class="btn btn-primary w-100">Next Individual</button>
-            </form>
-        </div>
+        <h1>Summary: Individual {{ customer_number }} of 16</h1>
+        <p>Your Initial Estimate: ${{ initial_guess|round(2) }}</p>
+        <p>AI Prediction: ${{ ai_prediction|round(2) }}</p>
+        <p>Your Final Estimate: ${{ final_guess|round(2) }}</p>
+        <form action="{{ url_for('stage3') }}" method="post">
+            <button type="submit">Next Individual</button>
+        </form>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
