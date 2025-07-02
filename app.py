@@ -16,6 +16,9 @@ import matplotlib.pyplot as plt
 import io
 import base64
 from scipy.stats import norm
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key')
@@ -24,12 +27,13 @@ logging.basicConfig(level=logging.DEBUG, filename='app.log', format='%(asctime)s
 
 db_pool = psycopg2.pool.SimpleConnectionPool(
     1, 20,
-    host=os.environ.get('DB_HOST', 'ep-odd-boat-a5tpi1i2-pooler.us-east-2.aws.neon.tech'),
+    host=os.environ.get('DB_HOST'),
     port=os.environ.get('DB_PORT', '5432'),
-    database=os.environ.get('DB_NAME', 'neondb'),
-    user=os.environ.get('DB_USER', 'neondb_owner'),
-    password=os.environ.get('DB_PASSWORD', 'REDACTED'),
-    sslmode='require'
+    database=os.environ.get('DB_NAME'),
+    user=os.environ.get('DB_USER'),
+    password=os.environ.get('DB_PASSWORD'),
+    sslmode='require',
+    channel_binding='require'
 )
 
 CSV_URL = "https://drive.google.com/uc?id=1z_FUKc-_5n3Z5gqTbWjgI4HETHzaO4zP"
@@ -312,7 +316,11 @@ def stage2():
     customer_number = task_index + 1
 
     if request.method == 'POST':
-        if condition == 1 or session.get('show_ai_info', False):
+        action = request.form.get('action')
+        if action == 'view' or not session.get('show_ai_info', False):
+            session['show_ai_info'] = True
+            return redirect(url_for('stage2'))
+        elif action == 'submit':
             final_guess = request.form.get('final_guess_value')
             try:
                 final_guess = float(final_guess)
@@ -323,9 +331,6 @@ def stage2():
                 return "Invalid charge guess. Please select a value between 1 and 70,000 USD.", 400
             session['current_final_guess'] = final_guess
             return redirect(url_for('stage3'))
-        else:
-            session['show_ai_info'] = True
-            return redirect(url_for('stage2'))
 
     predicted_charge = task_data['predicted_charges']
     info_data = None
