@@ -10,29 +10,36 @@
 <body>
     <div class="container">
         <h1>Review: Individual {{ customer_number }} of 16</h1>
-        <p>Your Estimated Charge: ${{ initial_guess|round(2) }}</p>
-        <table class="info-table">
-            <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
-            <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
-            <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
-            <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
-            <tr><th>Region</th><td>{{ customer_info['region'] }}</td></tr>
-        </table>
-        <p>AI Predicted Charge: ${{ predicted_charge|round(2) }}</p>
-        <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
-            <div class="slider-container">
-                <span class="population-avg">Population Avg: $13,270</span>
-                <label for="final_guess">Adjust Your Estimate ($1–$70,000):</label>
-                <input type="range" id="final_guess" name="final_guess" min="1" max="70000" value="{{ initial_guess }}">
-                <div class="slider-labels">
-                    <span>$1</span>
-                    <span>$70,000</span>
+        {% if show_ai_info %}
+            <table class="info-table">
+                <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
+                <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
+                <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
+                <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
+                <tr><th>Region</th><td>{{ customer_info['region'] }}</td></tr>
+            </table>
+            <p>Your Initial Estimated Charge was: ${{ initial_guess|round(2) }}</p>
+            <p>AI Predicted Charge: ${{ predicted_charge|round(2) }}</p>
+            <p class="update-notice">You can now update your initial estimated charge</p>
+            <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
+                <div class="slider-container">
+                    <span class="population-avg">Population Avg: $13,270</span>
+                    <label for="final_guess">Adjust Your Estimate ($1–$70,000):</label>
+                    <input type="range" id="final_guess" name="final_guess" min="1" max="70000" value="{{ initial_guess }}">
+                    <div class="slider-labels">
+                        <span>$1</span>
+                        <span>$70,000</span>
+                    </div>
+                    <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ initial_guess }}">
+                    <p>Your Estimated Insurance Charge: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="70000" value="{{ initial_guess }}"></p>
                 </div>
-                <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ initial_guess }}">
-                <p>Your Estimated Insurance Charge: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="70000" value="{{ initial_guess }}"></p>
-            </div>
-            <button type="submit">Submit Final Estimate</button>
-        </form>
+                <button type="submit">Submit Final Estimate</button>
+            </form>
+        {% else %}
+            <form id="view-ai-form" action="{{ url_for('stage2') }}" method="post">
+                <button type="submit">View AI Prediction</button>
+            </form>
+        {% endif %}
     </div>
 </body>
 </html>

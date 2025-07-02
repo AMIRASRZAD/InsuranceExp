@@ -10,7 +10,6 @@
 <body>
     <div class="container">
         <h1>Review: Individual {{ customer_number }} of 16</h1>
-        <p>Your Estimated Charge: ${{ initial_guess|round(2) }}</p>
         {% if show_ai_info %}
             <table class="info-table">
                 <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
@@ -19,10 +18,12 @@
                 <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
                 <tr><th>Region</th><td>{{ customer_info['region'] }}</td></tr>
             </table>
+            <p>Your Initial Estimated Charge was: ${{ initial_guess|round(2) }}</p>
             <p>AI Predicted Charge: ${{ predicted_charge|round(2) }}</p>
             <div class="chart-container">
-                <img src="data:image/png;base64,{{ info_data }}" alt="Uncertainty Distribution">
+                <img src="data:image/png;base64,{{ info_data }}" alt="Charge Likelihood Chart">
             </div>
+            <p class="update-notice">You can now update your initial estimated charge</p>
             <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
                 <div class="slider-container">
                     <span class="population-avg">Population Avg: $13,270</span>
