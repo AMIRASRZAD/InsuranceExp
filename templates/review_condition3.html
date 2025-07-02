@@ -25,6 +25,7 @@
             </div>
             <p class="update-notice">You can now update your initial estimated charge</p>
             <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
+                <input type="hidden" name="action" value="submit">
                 <div class="slider-container">
                     <span class="population-avg">Population Avg: $13,270</span>
                     <label for="final_guess">Adjust Your Estimate ($1–$70,000):</label>
@@ -40,6 +41,7 @@
             </form>
         {% else %}
             <form id="view-ai-form" action="{{ url_for('stage2') }}" method="post">
+                <input type="hidden" name="action" value="view">
                 <button type="submit">View AI Prediction & Uncertainty</button>
             </form>
         {% endif %}
