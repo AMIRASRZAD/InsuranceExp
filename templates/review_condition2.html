@@ -6,53 +6,10 @@
     <title>Review: Individual {{ customer_number }} of 16</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/slider.js"></script>
-    <style>
-        .chart-container {
-            width: 100%;
-            max-width: 500px;
-            height: 100px;
-            position: relative;
-            margin: 20px 0;
-        }
-        .bar-container {
-            display: flex;
-            height: 40px;
-            background-color: #D3D3D3;
-            position: relative;
-        }
-        .colored-bar {
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: black;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .gray-bar {
-            height: 100%;
-            flex-grow: 1;
-            position: relative;
-        }
-        .percentage-label {
-            position: absolute;
-            right: 5px;
-            top: -20px;
-            font-size: 12px;
-            font-weight: bold;
-            color: black;
-        }
-        .chart-title {
-            text-align: center;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-    </style>
 </head>
 <body>
     <div class="container">
         <h1>Review: Individual {{ customer_number }} of 16</h1>
-        <p>Your Estimated Charge: ${{ initial_guess|round(2) }}</p>
         {% if show_ai_info %}
             <table class="info-table">
                 <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
@@ -61,6 +18,7 @@
                 <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
                 <tr><th>Region</th><td>{{ customer_info['region'] }}</td></tr>
             </table>
+            <p>Your Initial Estimated Charge was: ${{ initial_guess|round(2) }}</p>
             <p>AI Predicted Charge: ${{ predicted_charge|round(2) }}</p>
             <p>The AI model uses similar cases to make decisions; the more similar cases, the more reliable the decision. The model used {{ epistemic_percentage }}% of similar instances to make a reliable decision.</p>
             <div class="chart-container">
@@ -75,6 +33,7 @@
                 </div>
                 <p id="chart-error" style="color: red; display: none;">Failed to load chart. Please try again.</p>
             </div>
+            <p class="update-notice">You can now update your initial estimated charge</p>
             <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
                 <div class="slider-container">
                     <span class="population-avg">Population Avg: $13,270</span>
