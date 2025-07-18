@@ -3,48 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review: Individual {{ customer_number }} of 16</title>
+    <title>Review: Patient {{ customer_number }} of 8</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/slider.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Review: Individual {{ customer_number }} of 16</h1>
-        {% if show_ai_info %}
-            <table class="info-table">
-                <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
-                <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
-                <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
-                <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
-                <tr><th>Region</th><td>{{ customer_info['region'] }}</td></tr>
-            </table>
-            <p>Your Initial Estimated Charge was: ${{ initial_guess|round(2) }}</p>
-            <p>AI Predicted Charge: ${{ predicted_charge|round(2) }}</p>
-            <div class="chart-container">
-                <img src="data:image/png;base64,{{ info_data }}" alt="Charge Likelihood Chart">
-            </div>
-            <p class="update-notice">You can now update your initial estimated charge</p>
-            <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
-                <input type="hidden" name="action" value="submit">
-                <div class="slider-container">
-                    <span class="population-avg">Population Avg: $13,270</span>
-                    <label for="final_guess">Adjust Your Estimate ($1–$70,000):</label>
-                    <input type="range" id="final_guess" name="final_guess" min="1" max="70000" value="{{ initial_guess }}">
-                    <div class="slider-labels">
-                        <span>$1</span>
-                        <span>$70,000</span>
-                    </div>
-                    <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ initial_guess }}">
-                    <p>Your Estimated Insurance Charge: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="70000" value="{{ initial_guess }}"></p>
+        <h1>Review: Patient {{ customer_number }} of 8</h1>
+        <table class="info-table">
+            <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
+            <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
+            <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
+            <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
+        </table>
+        <p>Your Initial Estimated Medical Cost was: ${{ initial_guess|int }}</p>
+        <p>Imagine that your company uses an automated algorithm to calculate medical costs for patients based on the same criteria.</p>
+        <p>AI Predicted Medical Cost: ${{ predicted_charge|int }}</p>
+        <div class="chart-container">
+            <img src="data:image/png;base64,{{ info_data }}" alt="Cost Likelihood Chart">
+        </div>
+        <p class="update-notice">You can now update your initial estimated medical cost</p>
+        <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
+            <div class="slider-container">
+                <span class="population-avg">Population Avg: $13,270</span>
+                <label for="final_guess">Adjust Your Estimated Medical Cost ($1–$70,000):</label>
+                <input type="range" id="final_guess" name="final_guess" min="1" max="70000" value="{{ initial_guess }}">
+                <div class="slider-labels">
+                    <span>$1</span>
+                    <span>$70,000</span>
                 </div>
-                <button type="submit">Submit Final Estimate</button>
-            </form>
-        {% else %}
-            <form id="view-ai-form" action="{{ url_for('stage2') }}" method="post">
-                <input type="hidden" name="action" value="view">
-                <button type="submit">View AI Prediction & Uncertainty</button>
-            </form>
-        {% endif %}
+                <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ initial_guess }}">
+                <p>Your Estimated Medical Cost: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="70000" value="{{ initial_guess }}"></p>
+            </div>
+            <button type="submit">Submit Final Estimate</button>
+        </form>
     </div>
 </body>
 </html>

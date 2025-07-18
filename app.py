@@ -117,9 +117,9 @@ def aleatoric_charts(level, predicted_charge, true_charge, task_id):
     plt.plot(x, y, color='#4CAF50')
     plt.fill_between(x, y, alpha=0.3, color='#4CAF50')
     plt.axvline(predicted_charge, color='#D32F2F', linestyle='--', label='Predicted Charge')
-    plt.xlabel('Insurance Charge (USD)')
+    plt.xlabel('Medical Cost (USD)')
     plt.ylabel('Likelihood')
-    plt.title('Charge Likelihood')
+    plt.title('Cost Likelihood')
     plt.gca().get_yaxis().set_visible(False)
     plt.tight_layout()
 
@@ -134,9 +134,9 @@ def sample_rows(condition):
     condition_map = {1: 'AI_only', 2: 'epistemic', 3: 'aleatoric'}
     condition_str = condition_map[condition]
     valid_rows = df[df['condition'].str.lower() == condition_str.lower()]
-    if len(valid_rows) != 16:
-        logging.warning(f"Expected 16 rows for condition {condition_str}, found {len(valid_rows)}")
-        valid_rows = df[df['condition'].isin(['AI_only', 'epistemic', 'aleatoric'])].sample(16, random_state=np.random.randint(1000))
+    if len(valid_rows) != 8:
+        logging.warning(f"Expected 8 rows for condition {condition_str}, found {len(valid_rows)}")
+        valid_rows = df[df['condition'].isin(['AI_only', 'epistemic', 'aleatoric'])].sample(8, random_state=np.random.randint(1000))
     sampled_rows = valid_rows.to_dict('records')
     random.shuffle(sampled_rows)
     for i, row in enumerate(sampled_rows):
@@ -144,7 +144,7 @@ def sample_rows(condition):
     return sampled_rows
 
 def get_practice_data():
-    return df[df['condition'] == 'practice'].sample(5, random_state=np.random.randint(1000)).to_dict('records')
+    return df[df['condition'] == 'practice'].sample(2, random_state=np.random.randint(1000)).to_dict('records')
 
 @app.route('/')
 def index():
@@ -181,7 +181,7 @@ def start():
 def practice():
     practice_index = session.get('practice_index', 0)
     practice_data = get_practice_data()
-    if practice_index >= 5:
+    if practice_index >= 2:
         return redirect(url_for('transition'))
 
     practice_row = practice_data[practice_index]
@@ -195,7 +195,7 @@ def practice():
                 raise ValueError
         except (ValueError, TypeError):
             logging.error(f"Invalid initial_guess: {initial_guess}")
-            return "Invalid charge guess. Please select a value between 1 and 70,000 USD.", 400
+            return "Invalid cost estimate. Please select a value between 1 and 70,000 USD.", 400
 
         session['practice_index'] += 1
         return render_template('practice_result.html',
@@ -208,8 +208,7 @@ def practice():
         'age': practice_row['age'],
         'sex': practice_row['sex'],
         'bmi': practice_row['bmi'],
-        'smoker': practice_row['smoker'],
-        'region': practice_row['region']
+        'smoker': practice_row['smoker']
     }
     return render_template('practice.html',
                          customer_info=customer_info,
@@ -224,13 +223,17 @@ def transition():
 def task():
     task_index = session.get('task_index', 0)
     tasks = session.get('tasks', [])
-    if task_index >= 16:
+    if task_index >= 8:
         max_retries = 3
         conn = None
         for attempt in range(max_retries):
             conn = db_pool.getconn()
             try:
                 with conn.cursor() as cur:
+                    # Log table schema
+                    cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'responses'")
+                    schema = [row[0] for row in cur.fetchall()]
+                    logging.debug(f"Responses table schema: {schema}")
                     for response in session.get('responses', []):
                         task_data = next(t for t in tasks if t['ID'] == response['ID'])
                         uncertainty_level = task_data.get('uncertainty_level', 1)
@@ -242,16 +245,24 @@ def task():
                         except (ValueError, TypeError):
                             logging.error(f"Non-integer uncertainty_level: {uncertainty_level}")
                             uncertainty_level = 1
+                        # Prepare response copy for logging
+                        log_response = response.copy()
+                        log_response['Created_At'] = log_response['Created_At'].isoformat()
+                        logging.debug(f"Response data: {json.dumps(log_response)}")
+                        insert_args = (
+                            session['participant_id'], response['Task_Number'], response['Condition'], response['Initial_Guess'],
+                            response['Final_Guess'], response['Predicted_Charge'], uncertainty_level,
+                            task_data['true_charges'], task_data['age'], task_data['sex'], task_data['bmi'],
+                            task_data['children'], task_data['smoker'], task_data['prediction_error'],
+                            task_data['total_uncertainty_std'], task_data['epistemic_uncertainty_std'], task_data['aleatoric_uncertainty_std'],
+                            response['Task_Duration_ms'], response['Created_At']
+                        )
+                        logging.debug(f"INSERT arguments: {insert_args}")
                         cur.execute(
                             "INSERT INTO responses (participant_id, task_number, condition, initial_guess, final_guess, predicted_charge, uncertainty_level, "
-                            "true_charge, age, sex, bmi, children, smoker, region, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std, task_duration_ms, created_at) "
-                            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                            (session['participant_id'], response['Task_Number'], response['Condition'], response['Initial_Guess'],
-                             response['Final_Guess'], response['Predicted_Charge'], uncertainty_level,
-                             task_data['true_charges'], task_data['age'], task_data['sex'], task_data['bmi'],
-                             task_data['children'], task_data['smoker'], task_data['region'], task_data['prediction_error'],
-                             task_data['total_uncertainty_std'], task_data['epistemic_uncertainty_std'], task_data['aleatoric_uncertainty_std'],
-                             response['Task_Duration_ms'], response['Created_At'])
+                            "true_charge, age, sex, bmi, children, smoker, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std, task_duration_ms, created_at) "
+                            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                            insert_args
                         )
                     conn.commit()
                 logging.info("Database commit successful")
@@ -289,19 +300,17 @@ def task():
                 raise ValueError
         except (ValueError, TypeError):
             logging.error(f"Invalid initial_guess: {initial_guess}")
-            return "Invalid charge guess. Please select a value between 1 and 70,000 USD.", 400
+            return "Invalid cost estimate. Please select a value between 1 and 70,000 USD.", 400
         session['current_initial_guess'] = initial_guess
-        session['task_start_time'] = time.time()  # Record task start time
+        session['task_start_time'] = time.time()
         return redirect(url_for('stage2'))
 
     customer_info = {
         'age': task_data['age'],
         'sex': task_data['sex'],
         'bmi': task_data['bmi'],
-        'smoker': task_data['smoker'],
-        'region': task_data['region']
+        'smoker': task_data['smoker']
     }
-    session['task_start_time'] = time.time()  # Record task start time for GET request
     return render_template('assessment.html',
                          customer_info=customer_info,
                          averages=AVERAGES,
@@ -310,27 +319,22 @@ def task():
 @app.route('/stage2', methods=['GET', 'POST'])
 def stage2():
     task_index = session.get('task_index', 0)
-    task_data = session['tasks'][task_index]
+    task_data = session.get('tasks', [])[task_index]
     condition = session['condition']
     initial_guess = session.get('current_initial_guess')
     customer_number = task_index + 1
 
     if request.method == 'POST':
-        action = request.form.get('action')
-        if action == 'view' or not session.get('show_ai_info', False):
-            session['show_ai_info'] = True
-            return redirect(url_for('stage2'))
-        elif action == 'submit':
-            final_guess = request.form.get('final_guess_value')
-            try:
-                final_guess = float(final_guess)
-                if final_guess < 1 or final_guess > 70000:
-                    raise ValueError
-            except (ValueError, TypeError):
-                logging.error(f"Invalid final_guess: {final_guess}")
-                return "Invalid charge guess. Please select a value between 1 and 70,000 USD.", 400
-            session['current_final_guess'] = final_guess
-            return redirect(url_for('stage3'))
+        final_guess = request.form.get('final_guess_value')
+        try:
+            final_guess = float(final_guess)
+            if final_guess < 1 or final_guess > 70000:
+                raise ValueError
+        except (ValueError, TypeError):
+            logging.error(f"Invalid final_guess: {final_guess}")
+            return "Invalid cost estimate. Please select a value between 1 and 70,000 USD.", 400
+        session['current_final_guess'] = final_guess
+        return redirect(url_for('stage3'))
 
     predicted_charge = task_data['predicted_charges']
     info_data = None
@@ -344,14 +348,12 @@ def stage2():
         'age': task_data['age'],
         'sex': task_data['sex'],
         'bmi': task_data['bmi'],
-        'smoker': task_data['smoker'],
-        'region': task_data['region']
+        'smoker': task_data['smoker']
     }
 
     return render_template(f'review_condition{condition}.html',
                          predicted_charge=predicted_charge,
                          initial_guess=initial_guess,
-                         show_ai_info=session.get('show_ai_info', False),
                          info_data=info_data,
                          customer_number=customer_number,
                          customer_info=customer_info,
@@ -361,16 +363,15 @@ def stage2():
 def stage3():
     task_index = session.get('task_index', 0)
     tasks = session.get('tasks', [])
-    if task_index >= 16:
-        logging.error(f"Invalid task_index: {task_index}")
+    if task_index >= 8:
         return redirect(url_for('task'))
 
     task_data = tasks[task_index]
     initial_guess = session.get('current_initial_guess')
     final_guess = session.get('current_final_guess')
     task_start_time = session.get('task_start_time', time.time())
-    task_duration_ms = (time.time() - task_start_time) * 1000  # Duration in milliseconds
-    created_at = datetime.datetime.now()  # Record task completion timestamp
+    task_duration_ms = (time.time() - task_start_time) * 1000
+    created_at = datetime.datetime.now()
 
     if request.method == 'POST':
         session['responses'].append({
@@ -386,7 +387,6 @@ def stage3():
             'Created_At': created_at
         })
         session['task_index'] += 1
-        session.pop('show_ai_info', None)
         session.pop('current_initial_guess', None)
         session.pop('current_final_guess', None)
         session.pop('task_start_time', None)
