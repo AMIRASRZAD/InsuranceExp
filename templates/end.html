@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Experiment Complete</title>
+    <title>Thank You!</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
         <h1>Thank You!</h1>
-        <p>Thank you for participating in this experiment. Please provide this code to our Prolific platform to finalize your participation: <strong>{{ participant_id }}</strong></p>
+        <p>Thank you for participating in this experiment. Your performance was {{ performance_score }}%.</p>
+        <p>Please provide this code to our Prolific platform to finalize your participation: {{ participant_id }}</p>
     </div>
 </body>
 </html>

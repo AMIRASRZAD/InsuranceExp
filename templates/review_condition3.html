@@ -6,37 +6,63 @@
     <title>Review: Patient {{ customer_number }} of 8</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/slider.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if ({{ submitted|tojson }} && document.getElementById('submission-section')) {
+                document.getElementById('submission-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="container">
-        <h1>Review: Patient {{ customer_number }} of 8</h1>
-        <table class="info-table">
-            <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
-            <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
-            <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
-            <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
-        </table>
-        <p>Your Initial Estimated Medical Cost was: ${{ initial_guess|int }}</p>
-        <p>Imagine that your company uses an automated algorithm to calculate medical costs for patients based on the same criteria.</p>
-        <p>AI Predicted Medical Cost: ${{ predicted_charge|int }}</p>
-        <div class="chart-container">
-            <img src="data:image/png;base64,{{ info_data }}" alt="Cost Likelihood Chart">
+        <div class="section">
+            <h1>Review: Patient {{ customer_number }} of 8</h1>
+            <table class="info-table">
+                <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
+                <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
+                <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
+                <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
+            </table>
+            <p>Your Initial Estimated Medical Cost was: ${{ initial_guess|int }}</p>
         </div>
-        <p class="update-notice">You can now update your initial estimated medical cost</p>
-        <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
+        <div class="section">
+            <p>Imagine that your company uses an automated algorithm to calculate medical costs for patients based on the same criteria.</p>
+            <p><strong>The AI’s medical cost estimate isn’t exact due to shaky data, so it will fall somewhere within the range shown below.</strong></p>
+            <div class="chart-container">
+                <img src="data:image/png;base64,{{ info_data }}" alt="Cost Range">
+            </div>
+            <p>As a result, the AI Predicted Medical Cost: ${{ predicted_charge|int }}</p>
+        </div>
+        <div class="section" id="submission-section">
+            <p class="update-notice">You can now update your initial estimated medical cost</p>
             <div class="slider-container">
-                <span class="population-avg">Population Avg: $13,270</span>
                 <label for="final_guess">Adjust Your Estimated Medical Cost ($1–$70,000):</label>
-                <input type="range" id="final_guess" name="final_guess" min="1" max="70000" value="{{ initial_guess }}">
+                <input type="range" id="final_guess" min="1" max="70000" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}>
                 <div class="slider-labels">
                     <span>$1</span>
                     <span>$70,000</span>
                 </div>
-                <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ initial_guess }}">
-                <p>Your Estimated Medical Cost: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="70000" value="{{ initial_guess }}"></p>
+                <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
+                <p>Your Estimated Medical Cost: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="70000" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}></p>
             </div>
-            <button type="submit">Submit Final Estimate</button>
-        </form>
+            {% if not submitted %}
+                <div class="button-container">
+                    <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
+                        <input type="hidden" name="final_guess_value" id="final_guess_value_submit" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
+                        <button type="submit">Submit Final Estimate</button>
+                    </form>
+                </div>
+            {% endif %}
+            {% if submitted and performance_message %}
+                <p><strong>{{ performance_message }}</strong></p>
+                <div class="button-container">
+                    <form action="{{ url_for('stage3') }}" method="post">
+                        <button type="submit">Continue</button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
     </div>
 </body>
 </html>
