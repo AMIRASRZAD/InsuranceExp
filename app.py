@@ -161,16 +161,19 @@ def start():
     if condition not in available_conditions:
         return "Condition full, try again later.", 403
 
-    participant_name = request.form.get('participant_name', '').strip() or None
+    prolific_id = request.form.get('prolific_id', '').strip()
+    if not prolific_id:
+        return "Prolific ID is required.", 400
+
     participant_id = str(uuid.uuid4())
 
     PARTICIPANT_COUNTS[condition] += 1
     PARTICIPANT_ORDER.append(condition)
-    logging.info(f"Assigned participant {participant_id} to condition {condition}")
+    logging.info(f"Assigned participant with Prolific ID {prolific_id} to condition {condition}")
 
     session['condition'] = condition
+    session['prolific_id'] = prolific_id
     session['participant_id'] = participant_id
-    session['participant_name'] = participant_name
     session['practice_index'] = 0
     session['tasks'] = sample_rows(condition)
     session['task_index'] = 0
@@ -203,7 +206,7 @@ def practice():
         ai_error = abs(practice_row['predicted_charges'] - practice_row['true_charges'])
         performance_message = "Your estimate was closer to the true medical cost than the AI’s prediction" if user_error <= ai_error else "The AI’s prediction was closer to the true medical cost than your estimate"
 
-        session['practice_index'] += 1
+        session['practice_index'] = session.get('practice_index', 0) + 1
         return render_template('practice_result.html',
                              customer_number=customer_number,
                              customer_info=practice_row,
@@ -237,7 +240,7 @@ def task():
         performance_wins = session.get('performance_wins', 0)
         performance_score = 20 + (performance_wins * 10)  # 0 wins = 20%, 1 win = 30%, ..., 8 wins = 100%
         bonus = (performance_score / 100) * 2.0
-        logging.info(f"Participant {session['participant_id']} performance: {performance_score}%, bonus: ${bonus:.2f}")
+        logging.info(f"Participant with Prolific ID {session.get('prolific_id')} performance: {performance_score}%, bonus: ${bonus:.2f}")
         for attempt in range(max_retries):
             conn = db_pool.getconn()
             try:
@@ -260,7 +263,7 @@ def task():
                         log_response['Created_At'] = log_response['Created_At'].isoformat()
                         logging.debug(f"Response data: {json.dumps(log_response)}")
                         insert_args = (
-                            session['participant_id'], response['Task_Number'], response['Condition'], response['Initial_Guess'],
+                            session['prolific_id'], response['Task_Number'], response['Condition'], response['Initial_Guess'],
                             response['Final_Guess'], response['Predicted_Charge'], uncertainty_level,
                             task_data['true_charges'], task_data['age'], task_data['sex'], task_data['bmi'],
                             task_data['children'], task_data['smoker'], task_data['prediction_error'],
@@ -269,7 +272,7 @@ def task():
                         )
                         logging.debug(f"INSERT arguments: {insert_args}")
                         cur.execute(
-                            "INSERT INTO responses (participant_id, task_number, condition, initial_guess, final_guess, predicted_charge, uncertainty_level, "
+                            "INSERT INTO responses (prolific_id, task_number, condition, initial_guess, final_guess, predicted_charge, uncertainty_level, "
                             "true_charge, age, sex, bmi, children, smoker, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std, task_duration_ms, created_at) "
                             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                             insert_args
@@ -296,7 +299,7 @@ def task():
         session.pop('responses', None)
         session.pop('tasks', None)
         session.pop('task_index', None)
-        return render_template('end.html', participant_id=session.get('participant_id'), performance_score=performance_score)
+        return render_template('end.html', performance_score=performance_score)
 
     task_data = tasks[task_index]
     condition = session['condition']

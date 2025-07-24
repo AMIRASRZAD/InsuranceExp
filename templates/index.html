@@ -23,8 +23,8 @@
         <h2>Time</h2>
         <p>~10–15 minutes</p>
         <form action="{{ url_for('start') }}" method="post">
-            <label for="participant_name">Name (optional):</label>
-            <input type="text" id="participant_name" name="participant_name">
+            <label for="prolific_id">Prolific ID (required):</label>
+            <input type="text" id="prolific_id" name="prolific_id" required>
             <button type="submit">Start Estimation</button>
         </form>
     </div>
