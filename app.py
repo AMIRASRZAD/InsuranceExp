@@ -36,11 +36,26 @@ db_pool = psycopg2.pool.SimpleConnectionPool(
     channel_binding='require'
 )
 
-CSV_URL = "https://drive.google.com/uc?id=1z_FUKc-_5n3Z5gqTbWjgI4HETHzaO4zP"
+CSV_URL = "https://drive.google.com/uc?id=1HU6povmvu4D9c8fI4ONxj8YsDGwbiSu_"
 df = pd.read_csv(CSV_URL)
 
+# Log initial data state
+logging.debug(f"Initial DataFrame shape: {df.shape}")
+logging.debug(f"Initial 'age' column values: {df['age'].tolist()[:10]}")
+logging.debug(f"Initial 'children' column values: {df['children'].tolist()[:10]}")
+
+# Handle missing or invalid values before casting
 for col in ['age', 'children']:
-    df[col] = df[col].astype(int)
+    df[col] = pd.to_numeric(df[col], errors='coerce')  # Convert to numeric, invalid to NaN
+    if df[col].isna().any():
+        logging.warning(f"Found NaN values in column {col}: {df[col].isna().sum()} NaNs")
+        if col == 'age':
+            df[col] = df[col].fillna(df[col].median())  # Fill age with median
+        else:  # children
+            df[col] = df[col].fillna(0)  # Fill children with 0
+    df[col] = df[col].astype(int)  # Now safe to cast to int
+    logging.debug(f"Processed '{col}' column: {df[col].tolist()[:10]}")
+
 for col in ['bmi', 'true_charges', 'predicted_charges', 'prediction_error', 'total_uncertainty_std', 'epistemic_uncertainty_std', 'aleatoric_uncertainty_std']:
     df[col] = df[col].astype(float)
 df['sex_enc'] = df['sex'].map({'male': 1, 'female': 0})
@@ -60,46 +75,47 @@ AVERAGES = {
 }
 
 PARTICIPANT_COUNTS = {1: 0, 2: 0, 3: 0}
-MAX_PER_CONDITION = 80
+MAX_PER_CONDITION = 200
 PARTICIPANT_ORDER = []
 
 def epistemic_charts(uncertainty_level, task_id):
     random.seed(task_id)
     if uncertainty_level == 1:
-        percentage = random.uniform(20, 30)
+        instance_count = random.choice([1, 2])
         color = '#FF6B6B'
     elif uncertainty_level == 2:
-        percentage = random.uniform(45, 55)
+        instance_count = random.choice([4, 5])
         color = '#FFD93D'
     elif uncertainty_level == 3:
-        percentage = random.uniform(65, 75)
+        instance_count = random.choice([6, 7])
         color = '#FFA500'
     else:
-        percentage = random.uniform(85, 95)
+        instance_count = random.choice([9, 10])
         color = '#4CAF50'
 
     chart_data = {
-        'percentage': round(percentage),
+        'instance_count': instance_count,
         'color': color,
-        'remaining_percentage': round(100 - percentage)
+        'remaining_instances': 10 - instance_count,
+        'label_position': 'left' if instance_count in [1, 2] else 'center'
     }
 
-    logging.debug(f"Epistemic chart data for task_id {task_id}, uncertainty_level {uncertainty_level}, percentage {percentage}: {json.dumps(chart_data)}")
-    return chart_data, round(percentage)
+    logging.debug(f"Epistemic chart data for task_id {task_id}, uncertainty_level {uncertainty_level}, instance_count {instance_count}: {json.dumps(chart_data)}")
+    return chart_data, instance_count
 
 def confidence_interval_chart(level, predicted_charge, task_id):
     np.random.seed(task_id)
-    if level == 1:  # Highest uncertainty
-        percentage = 0.5  # ±50%
+    if level == 1:
+        percentage = 0.6  # ±60%
     elif level == 2:
         percentage = 0.35  # ±35%
     elif level == 3:
         percentage = 0.2  # ±20%
-    else:  # Lowest uncertainty
-        percentage = 0.07  # ±7%
+    else:
+        percentage = 0.05  # ±5%
 
     lower_bound = max(0, predicted_charge * (1 - percentage))
-    upper_bound = min(70000, predicted_charge * (1 + percentage))
+    upper_bound = min(30000, predicted_charge * (1 + percentage))
 
     fig = plt.figure(figsize=(5, 1), facecolor='none', frameon=False)
     ax = plt.gca()
@@ -111,6 +127,7 @@ def confidence_interval_chart(level, predicted_charge, task_id):
     ax.set_ylim(-0.5, 0.5)
     ax.text(lower_bound, -0.4, f'${int(lower_bound)}', ha='center', va='top', fontsize=10)
     ax.text(upper_bound, -0.4, f'${int(upper_bound)}', ha='center', va='top', fontsize=10)
+    ax.text(predicted_charge, 0.3, f'${int(predicted_charge)}', ha='center', va='bottom', fontsize=10, color='#4b5563')
     ax.set_facecolor('#f9fafb')
     ax.get_yaxis().set_visible(False)
     ax.get_xaxis().set_visible(False)
@@ -128,24 +145,28 @@ def sample_rows(condition):
     condition_map = {1: 'AI_only', 2: 'epistemic', 3: 'aleatoric'}
     condition_str = condition_map[condition]
     if condition_str == 'AI_only':
-        valid_rows = df[df['condition'].str.lower() == condition_str.lower()].head(8)
+        valid_rows = df[df['condition'].str.lower() == condition_str.lower()].sample(n=8, random_state=random.randint(1, 10000))
     else:
         valid_rows = pd.concat([
-            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 1)].head(2),
-            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 2)].head(2),
-            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 3)].head(2),
-            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 4)].head(2)
+            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 1)].sample(n=2, random_state=random.randint(1, 10000)),
+            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 2)].sample(n=2, random_state=random.randint(1, 10000)),
+            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 3)].sample(n=2, random_state=random.randint(1, 10000)),
+            df[(df['condition'].str.lower() == condition_str.lower()) & (df['uncertainty_level'] == 4)].sample(n=2, random_state=random.randint(1, 10000))
         ])
     if len(valid_rows) != 8:
         logging.warning(f"Expected 8 rows for condition {condition_str}, found {len(valid_rows)}")
-        valid_rows = df[df['condition'].isin(['AI_only', 'epistemic', 'aleatoric'])].head(8)
+        valid_rows = df[df['condition'].isin(['AI_only', 'epistemic', 'aleatoric'])].sample(n=8, random_state=random.randint(1, 10000))
     sampled_rows = valid_rows.to_dict('records')
+    random.shuffle(sampled_rows)  # Randomize task order
     for i, row in enumerate(sampled_rows):
         row['ID'] = i + 1
     return sampled_rows
 
 def get_practice_data():
-    return df[df['condition'] == 'practice'].head(5).to_dict('records')
+    return df[df['condition'] == 'practice'].head(6).to_dict('records')
+
+def get_example_data():
+    return df[df['condition'] == 'practice'][6:10].to_dict('records')
 
 @app.route('/')
 def index():
@@ -180,13 +201,18 @@ def start():
     session['responses'] = []
     session['performance_wins'] = 0  # Track wins for main tasks
 
-    return redirect(url_for('practice'))
+    return redirect(url_for('examples'))
+
+@app.route('/examples')
+def examples():
+    example_data = get_example_data()
+    return render_template('examples.html', example_data=example_data)
 
 @app.route('/practice', methods=['GET', 'POST'])
 def practice():
     practice_index = session.get('practice_index', 0)
     practice_data = get_practice_data()
-    if practice_index >= 5:
+    if practice_index >= 6:
         return redirect(url_for('transition'))
 
     practice_row = practice_data[practice_index]
@@ -196,15 +222,15 @@ def practice():
         initial_guess = request.form.get('initial_guess_value')
         try:
             initial_guess = float(initial_guess)
-            if initial_guess < 1 or initial_guess > 70000:
+            if initial_guess < 1 or initial_guess > 30000:
                 raise ValueError
         except (ValueError, TypeError):
             logging.error(f"Invalid initial_guess: {initial_guess}")
-            return "Invalid cost estimate. Please select a value between 1 and 70,000 USD.", 400
+            return "Invalid cost estimate. Please select a value between 1 and 30,000 USD.", 400
 
         user_error = abs(initial_guess - practice_row['true_charges'])
-        ai_error = abs(practice_row['predicted_charges'] - practice_row['true_charges'])
-        performance_message = "Your estimate was closer to the true medical cost than the AI’s prediction" if user_error <= ai_error else "The AI’s prediction was closer to the true medical cost than your estimate"
+        automated_algorithm_error = abs(practice_row['predicted_charges'] - practice_row['true_charges'])
+        performance_message = "Your estimate was closer to the true medical cost than the automated algorithm’s prediction" if user_error <= automated_algorithm_error else "The automated algorithm’s prediction was closer to the true medical cost than your estimate"
 
         session['practice_index'] = session.get('practice_index', 0) + 1
         return render_template('practice_result.html',
@@ -212,7 +238,7 @@ def practice():
                              customer_info=practice_row,
                              initial_guess=initial_guess,
                              true_charge=practice_row['true_charges'],
-                             ai_prediction=practice_row['predicted_charges'],
+                             automated_algorithm_prediction=practice_row['predicted_charges'],
                              performance_message=performance_message)
 
     customer_info = {
@@ -310,11 +336,11 @@ def task():
         initial_guess = request.form.get('initial_guess_value')
         try:
             initial_guess = float(initial_guess)
-            if initial_guess < 1 or initial_guess > 70000:
+            if initial_guess < 1 or initial_guess > 30000:
                 raise ValueError("Initial guess out of range")
         except (ValueError, TypeError):
             logging.error(f"Invalid initial_guess: {initial_guess}")
-            return "Invalid cost estimate. Please select a value between 1 and 70,000 USD.", 400
+            return "Invalid cost estimate. Please select a value between 1 and 30,000 USD.", 400
         session['current_initial_guess'] = initial_guess
         session['task_start_time'] = time.time()
         return redirect(url_for('stage2'))
@@ -351,16 +377,19 @@ def stage2():
         logging.debug(f"Stage2 POST: final_guess={final_guess}, initial_guess={initial_guess}")
         try:
             final_guess = float(final_guess)
-            if final_guess < 1 or final_guess > 70000:
+            if final_guess < 1 or final_guess > 30000:
                 raise ValueError("Final guess out of range")
         except (ValueError, TypeError) as e:
             logging.error(f"Invalid final_guess: {final_guess}, Error: {str(e)}")
-            return "Invalid cost estimate. Please select a value between 1 and 70,000 USD.", 400
+            return "Invalid cost estimate. Please select a value between 1 and 30,000 USD.", 400
+
+        if final_guess == initial_guess:
+            logging.warning(f"Final guess ({final_guess}) equals initial guess ({initial_guess}) for task {task_index + 1}")
 
         user_error = abs(final_guess - task_data['true_charges'])
-        ai_error = abs(task_data['predicted_charges'] - task_data['true_charges'])
-        performance_message = "Your estimate was closer to the true medical cost than the AI’s prediction" if user_error <= ai_error else "The AI’s prediction was closer to the true medical cost than your estimate"
-        if user_error <= ai_error:
+        automated_algorithm_error = abs(task_data['predicted_charges'] - task_data['true_charges'])
+        performance_message = "Your estimate was closer to the true medical cost than the automated algorithm’s prediction" if user_error <= automated_algorithm_error else "The automated algorithm’s prediction was closer to the true medical cost than your estimate"
+        if user_error <= automated_algorithm_error:
             session['performance_wins'] = session.get('performance_wins', 0) + 1
 
         session['responses'].append({
@@ -381,9 +410,9 @@ def stage2():
 
         predicted_charge = task_data['predicted_charges']
         info_data = None
-        epistemic_percentage = None
+        epistemic_instance_count = None
         if condition == 2:
-            info_data, epistemic_percentage = epistemic_charts(task_data['uncertainty_level'], task_data['ID'])
+            info_data, epistemic_instance_count = epistemic_charts(task_data['uncertainty_level'], task_data['ID'])
         elif condition == 3:
             info_data = confidence_interval_chart(task_data['uncertainty_level'], predicted_charge, task_data['ID'])
 
@@ -401,16 +430,17 @@ def stage2():
                              info_data=info_data,
                              customer_number=customer_number,
                              customer_info=customer_info,
-                             epistemic_percentage=epistemic_percentage,
+                             epistemic_instance_count=epistemic_instance_count,
                              performance_message=performance_message,
-                             submitted=submitted)
+                             submitted=submitted,
+                             task_data=task_data)
 
     logging.debug(f"Stage2 GET: final_guess={final_guess}, initial_guess={initial_guess}")
     predicted_charge = task_data['predicted_charges']
     info_data = None
-    epistemic_percentage = None
+    epistemic_instance_count = None
     if condition == 2:
-        info_data, epistemic_percentage = epistemic_charts(task_data['uncertainty_level'], task_data['ID'])
+        info_data, epistemic_instance_count = epistemic_charts(task_data['uncertainty_level'], task_data['ID'])
     elif condition == 3:
         info_data = confidence_interval_chart(task_data['uncertainty_level'], predicted_charge, task_data['ID'])
 
@@ -428,9 +458,10 @@ def stage2():
                          info_data=info_data,
                          customer_number=customer_number,
                          customer_info=customer_info,
-                         epistemic_percentage=epistemic_percentage,
+                         epistemic_instance_count=epistemic_instance_count,
                          performance_message=performance_message,
-                         submitted=submitted)
+                         submitted=submitted,
+                         task_data=task_data)
 
 @app.route('/stage3', methods=['GET', 'POST'])
 def stage3():
@@ -457,7 +488,7 @@ def stage3():
                          customer_number=task_index + 1,
                          initial_guess=initial_guess,
                          final_guess=final_guess,
-                         ai_prediction=task_data['predicted_charges'],
+                         automated_algorithm_prediction=task_data['predicted_charges'],
                          performance_message=performance_message)
 
 @app.route('/test-db')

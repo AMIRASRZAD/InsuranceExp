@@ -19,50 +19,62 @@
         <div class="section">
             <h1>Review: Patient {{ customer_number }} of 8</h1>
             <table class="info-table">
-                <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
-                <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
-                <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
-                <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
+                <tr>
+                    <th>Age</th>
+                    <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 39)</span></td>
+                </tr>
+                <tr>
+                    <th>Sex</th>
+                    <td>{{ customer_info['sex'] }}</td>
+                </tr>
+                <tr>
+                    <th>BMI</th>
+                    <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(population avg: 30.7)</span></td>
+                </tr>
+                <tr>
+                    <th>Smoker</th>
+                    <td>{{ customer_info['smoker'] }}</td>
+                </tr>
             </table>
-            <p>Your Initial Estimated Medical Cost was: ${{ initial_guess|int }}</p>
+            <p>Your Initial Estimated Medical Cost: <strong>${{ initial_guess|int }}</strong></p>
         </div>
-        <div class="section">
-            <p>Imagine that your company uses an automated algorithm to calculate medical costs for patients based on the same criteria.</p>
-            <p><strong>The AI’s medical cost estimate isn’t exact due to shaky data, so it will fall somewhere within the range shown below.</strong></p>
-            <div class="chart-container">
-                <img src="data:image/png;base64,{{ info_data }}" alt="Cost Range">
-            </div>
-            <p>As a result, the AI Predicted Medical Cost: ${{ predicted_charge|int }}</p>
-        </div>
-        <div class="section" id="submission-section">
-            <p class="update-notice">You can now update your initial estimated medical cost</p>
-            <div class="slider-container">
-                <label for="final_guess">Adjust Your Estimated Medical Cost ($1–$70,000):</label>
-                <input type="range" id="final_guess" min="1" max="70000" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}>
-                <div class="slider-labels">
-                    <span>$1</span>
-                    <span>$70,000</span>
+        {% if not submitted %}
+            <div class="section" id="submission-section">
+                <p style="font-size: 18px; font-weight: bold; color: #1a3c6d;">Due to variability in the input data, the algorithm’s prediction also shows variability of {% if task_data.uncertainty_level == 1 %}±60%{% elif task_data.uncertainty_level == 2 %}±35%{% elif task_data.uncertainty_level == 3 %}±20%{% else %}±5%{% endif %}.</p>
+                <p style="color: #1a3c6d;">It produces a result somewhere within the indicated range:</p>
+                <div class="chart-container">
+                    <img src="data:image/png;base64,{{ info_data }}" alt="Cost Range">
                 </div>
-                <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
-                <p>Your Estimated Medical Cost: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="70000" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}></p>
-            </div>
-            {% if not submitted %}
+                <div class="slider-container">
+                    <label for="final_guess" style="color: rgb(223, 100, 7);"> Now you can adjust your estimated medical Cost:</label>
+                    <input type="range" id="final_guess" min="1" max="30000" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}>
+                    <div class="slider-labels">
+                        <span>$1</span>
+                        <span>$30,000</span>
+                    </div>
+                    <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
+                    <p>Your Estimated Medical Cost: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="30000" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}></p>
+                </div>
                 <div class="button-container">
                     <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
-                        <input type="hidden" name="final_guess_value" id="final_guess_value_submit" value="{{ final_guess|int if submitted and final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
+                        <input type="hidden" id="final_guess_value_submit" name="final_guess_value" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
                         <button type="submit">Submit Final Estimate</button>
                     </form>
                 </div>
-            {% endif %}
-            {% if submitted and performance_message %}
-                <p><strong>{{ performance_message }}</strong></p>
+            </div>
+        {% else %}
+            <div class="section">
+                <p style="font-size: 18px; font-weight: bold; color: #1a3c6d;">Due to variability in the input data, the algorithm’s prediction also shows variability of {% if task_data.uncertainty_level == 1 %}±60%{% elif task_data.uncertainty_level == 2 %}±35%{% elif task_data.uncertainty_level == 3 %}±20%{% else %}±5%{% endif %}.</p>
+                <p style="color: #1a3c6d;">It produces a result somewhere within the indicated range: <strong>${{ predicted_charge|int }}</strong></p>
+                <p>Your Adjusted Estimated Medical Cost: <strong>${{ final_guess|int }}</strong></p>
+                <p style="font-size: 18px;"><strong>{{ performance_message }}. True Medical Cost: ${{ task_data.true_charges|int }}</strong></p>
                 <div class="button-container">
                     <form action="{{ url_for('stage3') }}" method="post">
                         <button type="submit">Continue</button>
                     </form>
                 </div>
-            {% endif %}
-        </div>
+            </div>
+        {% endif %}
     </div>
 </body>
 </html>

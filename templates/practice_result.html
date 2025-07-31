@@ -3,22 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Practice Result: Patient {{ customer_number }} of 5</title>
+    <title>Practice Result: Patient {{ customer_number }} of 6</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Practice Result: Patient {{ customer_number }} of 5</h1>
-        <p><strong>{{ performance_message }}</strong></p>
+        <h1>Practice Result: Patient {{ customer_number }} of 6</h1>
+        <p style="font-size: 18px;"><strong>{{ performance_message }}</strong></p>
         <table class="info-table">
-            <tr><th>Age</th><td>{{ customer_info['age'] }}</td></tr>
-            <tr><th>Sex</th><td>{{ customer_info['sex'] }}</td></tr>
-            <tr><th>BMI</th><td>{{ customer_info['bmi']|round(1) }}</td></tr>
-            <tr><th>Smoker</th><td>{{ customer_info['smoker'] }}</td></tr>
+            <tr>
+                <th>Age</th>
+                <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 39)</span></td>
+            </tr>
+            <tr>
+                <th>Sex</th>
+                <td>{{ customer_info['sex'] }}</td>
+            </tr>
+            <tr>
+                <th>BMI</th>
+                <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(population avg: 30.7)</span></td>
+            </tr>
+            <tr>
+                <th>Smoker</th>
+                <td>{{ customer_info['smoker'] }}</td>
+            </tr>
         </table>
-        <p>Your Estimated Medical Cost: ${{ initial_guess|int }}</p>
-        <p>AI Predicted Medical Cost: ${{ ai_prediction|int }}</p>
-        <p>True Medical Cost: ${{ true_charge|int }}</p>
+        <p>Your Estimated Medical Cost: <strong>${{ initial_guess|int }}</strong></p>
+        <p>Automated Algorithm Predicted Medical Cost: <strong>${{ automated_algorithm_prediction|int }}</strong></p>
+        <p>True Medical Cost: <strong>${{ true_charge|int }}</strong></p>
         <form action="{{ url_for('practice') }}" method="get">
             <button type="submit">Next Practice</button>
         </form>
