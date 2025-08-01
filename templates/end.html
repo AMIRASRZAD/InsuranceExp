@@ -9,8 +9,12 @@
 <body>
     <div class="container">
         <h1>Thank You!</h1>
-        <p>Thank you for participating in this experiment. Your performance was {{ performance_score }}%.</p>
-        <p>Please provide this code to our Prolific platform to finalize your participation: C1FHYQ9H</p>
+        {% if ended_early %}
+            <p>The experiment is finished, thank you.</p>
+        {% else %}
+            <p>Thank you for participating in this experiment. Your performance was {{ performance_score }}%.</p>
+            <p>Please provide this code to our Prolific platform to finalize your participation: C1FHYQ9H</p>
+        {% endif %}
     </div>
 </body>
 </html>

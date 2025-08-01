@@ -3,11 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review: Patient {{ customer_number }} of 8</title>
+    <title>Review: Patient {{ customer_number }} of 6</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/slider.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('review_condition3.html loaded, slider.js should be active');
+            const form = document.getElementById('guess-form');
+            if (form) {
+                form.addEventListener('submit', function(event) {
+                    const input = document.getElementById('final_guess_number');
+                    console.log(`Review condition 3 form submission: final_guess_number=${input.value}`);
+                });
+            }
             if ({{ submitted|tojson }} && document.getElementById('submission-section')) {
                 document.getElementById('submission-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -17,19 +25,15 @@
 <body>
     <div class="container">
         <div class="section">
-            <h1>Review: Patient {{ customer_number }} of 8</h1>
+            <h1>Review: Patient {{ customer_number }} of 6</h1>
             <table class="info-table">
                 <tr>
                     <th>Age</th>
-                    <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 39)</span></td>
-                </tr>
-                <tr>
-                    <th>Sex</th>
-                    <td>{{ customer_info['sex'] }}</td>
+                    <td>{{ customer_info['age'] }} <span style="color: gray;">(avg: 35)</span></td>
                 </tr>
                 <tr>
                     <th>BMI</th>
-                    <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(population avg: 30.7)</span></td>
+                    <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(avg: 30)</span></td>
                 </tr>
                 <tr>
                     <th>Smoker</th>
@@ -40,34 +44,33 @@
         </div>
         {% if not submitted %}
             <div class="section" id="submission-section">
-                <p style="font-size: 18px; font-weight: bold; color: #1a3c6d;">Due to variability in the input data, the algorithm’s prediction also shows variability of {% if task_data.uncertainty_level == 1 %}±60%{% elif task_data.uncertainty_level == 2 %}±35%{% elif task_data.uncertainty_level == 3 %}±20%{% else %}±5%{% endif %}.</p>
-                <p style="color: #1a3c6d;">It produces a result somewhere within the indicated range:</p>
+                <p style="font-size: 18px; font-weight: bold; color: #1a3c6d;">Up to 5% variability in the algorithm’s prediction is a reliable interval{% if task_data.uncertainty_level != 3 %} but{% endif %} the algorithm shows {% if task_data.uncertainty_level == 1 %}±60%{% elif task_data.uncertainty_level == 2 %}±30%{% else %}±5%{% endif %} variability for this prediction.</p>
+                <p style="color: #1a3c6d;">The algorithm prediction falls somewhere in this range:</p>
                 <div class="chart-container">
                     <img src="data:image/png;base64,{{ info_data }}" alt="Cost Range">
                 </div>
-                <div class="slider-container">
-                    <label for="final_guess" style="color: rgb(223, 100, 7);"> Now you can adjust your estimated medical Cost:</label>
-                    <input type="range" id="final_guess" min="1" max="30000" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}>
-                    <div class="slider-labels">
-                        <span>$1</span>
-                        <span>$30,000</span>
+                <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
+                    <div class="slider-container">
+                        <label for="final_guess">Adjust Your Estimated Medical Cost ($1–$30,000) <span style="color: red;">*</span>:</label>
+                        <input type="range" id="final_guess" min="1" max="30000">
+                        <div class="slider-labels">
+                            <span>$1</span>
+                            <span>$30,000</span>
+                        </div>
+                        <input type="hidden" id="final_guess_value" name="final_guess_value">
+                        <p>Your Estimated Medical Cost: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="30000" required></p>
                     </div>
-                    <input type="hidden" id="final_guess_value" name="final_guess_value" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
-                    <p>Your Estimated Medical Cost: $<input type="number" id="final_guess_number" name="final_guess_number" min="1" max="30000" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}" {{ 'disabled' if submitted else '' }}></p>
-                </div>
-                <div class="button-container">
-                    <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
-                        <input type="hidden" id="final_guess_value_submit" name="final_guess_value" value="{{ final_guess|int if final_guess is defined else initial_guess|int if initial_guess is defined else 1000 }}">
+                    <div class="button-container">
                         <button type="submit">Submit Final Estimate</button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         {% else %}
             <div class="section">
-                <p style="font-size: 18px; font-weight: bold; color: #1a3c6d;">Due to variability in the input data, the algorithm’s prediction also shows variability of {% if task_data.uncertainty_level == 1 %}±60%{% elif task_data.uncertainty_level == 2 %}±35%{% elif task_data.uncertainty_level == 3 %}±20%{% else %}±5%{% endif %}.</p>
-                <p style="color: #1a3c6d;">It produces a result somewhere within the indicated range: <strong>${{ predicted_charge|int }}</strong></p>
-                <p>Your Adjusted Estimated Medical Cost: <strong>${{ final_guess|int }}</strong></p>
-                <p style="font-size: 18px;"><strong>{{ performance_message }}. True Medical Cost: ${{ task_data.true_charges|int }}</strong></p>
+                <p>Your Estimated Medical Cost: <strong>${{ final_guess|int }}</strong></p>
+                <p>Automated Algorithm Predicted Medical Cost: <strong>${{ predicted_charge|int }}</strong></p>
+                <p>True Medical Cost: <strong>${{ task_data.true_charges|int }}</strong></p>
+                <p style="font-size: 16px;">{{ performance_message }}</p>
                 <div class="button-container">
                     <form action="{{ url_for('stage3') }}" method="post">
                         <button type="submit">Continue</button>

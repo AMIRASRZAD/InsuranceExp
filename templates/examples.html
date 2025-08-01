@@ -5,38 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Examples of Patient Information and Medical Charge</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .example-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .example-column {
+            flex: 1;
+        }
+        .example-column h2 {
+            text-align: center;
+        }
+        .info-table-smaller {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            background: #fafafa;
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 14px;
+        }
+        .info-table-smaller th,
+        .info-table-smaller td {
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .info-table-smaller th {
+            background: #e6edf7;
+            color: #1a3c6d;
+            font-weight: 600;
+        }
+        .info-table-smaller td {
+            border-bottom: 1px solid #e0e6ed;
+        }
+        .info-table-smaller tr:last-child td {
+            border-bottom: none;
+        }
+        @media (max-width: 600px) {
+            .example-container {
+                flex-direction: column;
+            }
+            .info-table-smaller th,
+            .info-table-smaller td {
+                font-size: 12px;
+                padding: 6px 8px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <h1>Examples of Patient Information and Medical Charge</h1>
         <p>Below are examples of patient information and their corresponding medical charges to help you understand the task:</p>
-        {% for example in example_data %}
-            <div class="section">
-                <h2>Patient {{ loop.index }}</h2>
-                <table class="info-table">
-                    <tr>
-                        <th>Age</th>
-                        <td>{{ example['age'] }} <span style="color: gray;">(population avg: 39)</span></td>
-                    </tr>
-                    <tr>
-                        <th>Sex</th>
-                        <td>{{ example['sex'] }}</td>
-                    </tr>
-                    <tr>
-                        <th>BMI</th>
-                        <td>{{ example['bmi']|round(1) }} <span style="color: gray;">(population avg: 30.7)</span></td>
-                    </tr>
-                    <tr>
-                        <th>Smoker</th>
-                        <td>{{ example['smoker'] }}</td>
-                    </tr>
-                    <tr>
-                        <th>Medical Charge</th>
-                        <td><strong>${{ example['true_charges']|int }}</strong></td>
-                    </tr>
-                </table>
+        <div class="example-container">
+            <div class="example-column">
+                <h2>Non-Smokers</h2>
+                {% for example in example_data['non_smokers'] %}
+                    <div class="section">
+                        <h3>Patient {{ loop.index }}</h3>
+                        <table class="info-table-smaller">
+                            <tr>
+                                <th>Age</th>
+                                <td>{{ example['age'] }} <span style="color: gray;">(avg: 35)</span></td>
+                            </tr>
+                            <tr>
+                                <th>BMI</th>
+                                <td>{{ example['bmi'] }} <span style="color: gray;">(avg: 30)</span></td>
+                            </tr>
+                            <tr>
+                                <th>Medical Charge</th>
+                                <td><strong>${{ example['true_charges']|int }}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                {% endfor %}
             </div>
-        {% endfor %}
+            <div class="example-column">
+                <h2>Smokers</h2>
+                {% for example in example_data['smokers'] %}
+                    <div class="section">
+                        <h3>Patient {{ loop.index + 4 }}</h3>
+                        <table class="info-table-smaller">
+                            <tr>
+                                <th>Age</th>
+                                <td>{{ example['age'] }} <span style="color: gray;">(avg: 35)</span></td>
+                            </tr>
+                            <tr>
+                                <th>BMI</th>
+                                <td>{{ example['bmi'] }} <span style="color: gray;">(avg: 30)</span></td>
+                            </tr>
+                            <tr>
+                                <th>Medical Charge</th>
+                                <td><strong>${{ example['true_charges']|int }}</strong></td>
+                            </tr>
+                        </table>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
         <form action="{{ url_for('practice') }}" method="get">
             <button type="submit">Start Practice</button>
         </form>

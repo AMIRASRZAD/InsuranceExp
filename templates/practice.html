@@ -10,20 +10,18 @@
 <body>
     <div class="container">
         <h1>Practice: Patient {{ customer_number }} of 6</h1>
-        <p>Medical cost will generally increase as one gets older. The medical cost is slightly higher for men. Increasing the BMI will increase the chance of higher medical costs, and the medical cost for smokers is higher.</p>
+        {% if customer_number == 1 %}
+            <p>Medical cost will generally increase as one gets older. Increasing the BMI will increase the chance of higher medical costs, and the medical cost for smokers is higher.</p>
+        {% endif %}
         <p><strong>The average insurance cost for all population in this dataset is $13,700.</strong></p>
         <table class="info-table">
             <tr>
                 <th>Age</th>
-                <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 39)</span></td>
-            </tr>
-            <tr>
-                <th>Sex</th>
-                <td>{{ customer_info['sex'] }}</td>
+                <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 35)</span></td>
             </tr>
             <tr>
                 <th>BMI</th>
-                <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(population avg: 30.7)</span></td>
+                <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(population avg: 30)</span></td>
             </tr>
             <tr>
                 <th>Smoker</th>
@@ -32,14 +30,14 @@
         </table>
         <form id="guess-form" action="{{ url_for('practice') }}" method="post">
             <div class="slider-container">
-                <label for="initial_guess">Estimate Medical Cost ($1–$30,000):</label>
-                <input type="range" id="initial_guess" name="initial_guess" min="1" max="30000" value="1000">
+                <label for="initial_guess">Estimate Medical Cost ($1–$30,000) <span style="color: red;">*</span>:</label>
+                <input type="range" id="initial_guess" name="initial_guess" min="1" max="30000">
                 <div class="slider-labels">
                     <span>$1</span>
                     <span>$30,000</span>
                 </div>
-                <input type="hidden" id="initial_guess_value" name="initial_guess_value" value="1000">
-                <p>Your Estimated Medical Cost: $<input type="number" id="initial_guess_number" name="initial_guess_number" min="1" max="30000" value="1000"></p>
+                <input type="hidden" id="initial_guess_value" name="initial_guess_value">
+                <p>Your Estimated Medical Cost: $<input type="number" id="initial_guess_number" name="initial_guess_number" min="1" max="30000" required></p>
             </div>
             <button type="submit">Submit Estimate</button>
         </form>

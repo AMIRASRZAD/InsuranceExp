@@ -9,19 +9,15 @@
 <body>
     <div class="container">
         <h1>Practice Result: Patient {{ customer_number }} of 6</h1>
-        <p style="font-size: 18px;"><strong>{{ performance_message }}</strong></p>
+        <p style="font-size: 16px;">{{ performance_message }}</p>
         <table class="info-table">
             <tr>
                 <th>Age</th>
-                <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 39)</span></td>
-            </tr>
-            <tr>
-                <th>Sex</th>
-                <td>{{ customer_info['sex'] }}</td>
+                <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 35)</span></td>
             </tr>
             <tr>
                 <th>BMI</th>
-                <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(population avg: 30.7)</span></td>
+                <td>{{ customer_info['bmi']|round(1) }} <span style="color: gray;">(population avg: 30)</span></td>
             </tr>
             <tr>
                 <th>Smoker</th>
