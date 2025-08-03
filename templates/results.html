@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Summary: Patient {{ customer_number }} of 6</title>
+    <title>Summary: Insured Customer {{ customer_number }} of 6</title>
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="container">
-        <h1>Summary: Patient {{ customer_number }} of 6</h1>
+        <h1>Summary: Insured Customer {{ customer_number }} of 6</h1>
         <p style="font-size: 16px;">{{ performance_message }}</p>
         <p>Your Initial Estimated Medical Cost: <strong>${{ initial_guess|int }}</strong></p>
         <p>Automated Algorithm Predicted Medical Cost: <strong>${{ automated_algorithm_prediction|int }}</strong></p>
         <p>Your Final Estimated Medical Cost: <strong>${{ final_guess|int }}</strong></p>
         <form action="{{ url_for('stage3') }}" method="post">
-            <button type="submit">{{ 'Finish Study' if customer_number == 6 else 'Next Patient' }}</button>
+            <button type="submit">{{ 'Finish Study' if customer_number == 6 else 'Next Insured Customer' }}</button>
         </form>
     </div>
 </body>

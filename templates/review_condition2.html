@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Review: Patient {{ customer_number }} of 6</title>
+    <title>Review: Insured Customer {{ customer_number }} of 6</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/slider.js"></script>
     <script>
@@ -25,7 +25,7 @@
 <body>
     <div class="container">
         <div class="section">
-            <h1>Review: Patient {{ customer_number }} of 6</h1>
+            <h1>Review: Insured Customer {{ customer_number }} of 6</h1>
             <table class="info-table">
                 <tr>
                     <th>Age</th>
@@ -44,8 +44,8 @@
         </div>
         {% if not submitted %}
             <div class="section" id="submission-section">
-                <p style="font-size: 18px; font-weight: bold; color: #1a3c6d;">The automated algorithm should use 10 similar cases to make a reliable decision.</p>
-                <p style="color: #1a3c6d;">For this patient, the algorithm has found and used <strong>{{ epistemic_instance_count }}</strong> similar instances which is a <strong>{{ info_data.reliability }}</strong> level of required data to make the decision.</p>
+                <p style="font-size: 18px; font-weight: bold; color: #1a3c6d;">Company's Automated Algorithm should use 10 similar cases to make a reliable decision.</p>
+                <p style="color: #1a3c6d;">For this Insured Customer, the algorithm has found and used <strong>{{ epistemic_instance_count }}</strong> similar instances which is a <strong>{{ info_data.reliability }}</strong> level of required data to make the decision.</p>
                 <div class="chart-container">
                     <div class="chart-title">Similar Cases in Automated Algorithm Training Data</div>
                     <div class="bar-container">
@@ -61,7 +61,7 @@
                 <p style="color: #1a3c6d;">Based on the above data, the algorithm predicted medical cost as: <strong>${{ predicted_charge|int }}</strong>.</p>
                 <form id="guess-form" action="{{ url_for('stage2') }}" method="post">
                     <div class="slider-container">
-                        <label for="final_guess">Adjust Your Estimated Medical Cost ($1–$30,000) <span style="color: red;">*</span>:</label>
+                        <label for="final_guess">Now you can adjust your estimated medical Cost: <span style="color: red;">*</span>:</label>
                         <input type="range" id="final_guess" min="1" max="30000">
                         <div class="slider-labels">
                             <span>$1</span>

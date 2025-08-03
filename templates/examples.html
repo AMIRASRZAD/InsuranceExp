@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Examples of Patient Information and Medical Charge</title>
+    <title>Examples of Insured Customer Information and Medical Charge</title>
     <link rel="stylesheet" href="/static/styles.css">
     <style>
         .example-container {
@@ -56,14 +56,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>Examples of Patient Information and Medical Charge</h1>
+        <h1>Examples of Insured Customer Information and Medical Charge</h1>
         <p style="color: rgb(244, 51, 8);"> Medical cost will generally increase as one gets older. Increasing the BMI will increase the chance of higher medical costs, and the medical cost for smokers is much higher.</p>
         <div class="example-container">
             <div class="example-column">
                 <h2>Non-Smokers</h2>
                 {% for example in example_data['non_smokers'] %}
                     <div class="section">
-                        <h3>Patient {{ loop.index }}</h3>
+                        <h3>Example {{ loop.index }}</h3>
                         <table class="info-table-smaller">
                             <tr>
                                 <th>Age</th>
@@ -85,7 +85,7 @@
                 <h2>Smokers</h2>
                 {% for example in example_data['smokers'] %}
                     <div class="section">
-                        <h3>Patient {{ loop.index + 4 }}</h3>
+                        <h3>Example {{ loop.index + 4 }}</h3>
                         <table class="info-table-smaller">
                             <tr>
                                 <th>Age</th>

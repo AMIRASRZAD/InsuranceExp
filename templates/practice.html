@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Practice: Patient {{ customer_number }} of 6</title>
+    <title>Practice {{ customer_number }} of 6</title>
     <link rel="stylesheet" href="/static/styles.css">
     <script src="/static/slider.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Practice: Patient {{ customer_number }} of 6</h1>
+        <h1>Practice {{ customer_number }} of 6</h1>
         {% if customer_number == 1 %}
             <p>Medical cost will generally increase as one gets older. Increasing the BMI will increase the chance of higher medical costs, and the medical cost for smokers is higher.</p>
         {% endif %}
-        <p><strong>The average insurance cost for all population in this dataset is $13,700.</strong></p>
-        <table class="info-table">
+<!-- <p><strong>The average insurance cost for all population in this dataset is $13,700.</strong></p> -->
+<table class="info-table">
             <tr>
                 <th>Age</th>
                 <td>{{ customer_info['age'] }} <span style="color: gray;">(population avg: 35)</span></td>

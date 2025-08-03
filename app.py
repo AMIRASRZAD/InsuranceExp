@@ -180,10 +180,13 @@ def confidence_interval_chart(level, predicted_charge, task_id):
     np.random.seed(task_id)
     if level == 1:
         percentage = 0.6  # ±60%
+        percentage_label = "60%"
     elif level == 2:
         percentage = 0.3  # ±30%
+        percentage_label = "30%"
     else:
         percentage = 0.05  # ±5%
+        percentage_label = "5%"
 
     lower_bound = max(0, predicted_charge * (1 - percentage))
     upper_bound = min(30000, predicted_charge * (1 + percentage))
@@ -196,7 +199,10 @@ def confidence_interval_chart(level, predicted_charge, task_id):
     ax.set_xlim(lower_bound - 1000, upper_bound + 1000)
     ax.set_ylim(-0.5, 0.5)
     ax.text(lower_bound, -0.4, f'${int(lower_bound)}', ha='center', va='top', fontsize=10)
+    ax.text(lower_bound, -0.6, f'(-{percentage_label})', ha='center', va='top', fontsize=8)
     ax.text(upper_bound, -0.4, f'${int(upper_bound)}', ha='center', va='top', fontsize=10)
+    ax.text(upper_bound, -0.6, f'(+{percentage_label})', ha='center', va='top', fontsize=8)
+    ax.text(predicted_charge, -0.4, f'${int(predicted_charge)}', ha='center', va='top', fontsize=10)
     ax.set_facecolor('#f9fafb')
     ax.get_yaxis().set_visible(False)
     ax.get_xaxis().set_visible(False)
@@ -308,6 +314,9 @@ def practice():
         performance_message = "Your estimate was closer to the true medical cost than the automated algorithm’s prediction" if user_error <= automated_algorithm_error else "The automated algorithm’s prediction was closer to the true medical cost than your estimate"
 
         session['practice_index'] = session.get('practice_index', 0) + 1
+        if practice_index == 2:  # After practice task 3
+            session['current_practice_row'] = practice_row
+            return redirect(url_for('practice_attention_check'))
         return render_template('practice_result.html',
                              customer_number=customer_number,
                              customer_info=practice_row,
@@ -324,6 +333,25 @@ def practice():
     return render_template('practice.html',
                          customer_info=customer_info,
                          customer_number=customer_number)
+
+@app.route('/practice_attention_check', methods=['GET', 'POST'])
+def practice_attention_check():
+    practice_index = session.get('practice_index', 0)
+    practice_data = get_practice_data()
+    if practice_index != 3:
+        return redirect(url_for('practice'))
+
+    practice_row = session.get('current_practice_row', practice_data[2])
+    customer_number = practice_index
+
+    if request.method == 'POST':
+        answer = request.form.get('answer')
+        correct_answer = 'yes' if practice_row['smoker'] == 'yes' else 'no'
+        logging.debug(f"Practice attention check: answer={answer}, correct={correct_answer}")
+        return redirect(url_for('practice'))
+
+    question = "Was Practice Patient 3 a smoker?"
+    return render_template('practice_attention_check.html', question=question, customer_number=customer_number)
 
 @app.route('/transition')
 def transition():
@@ -352,9 +380,9 @@ def attention_check():
         return redirect(url_for('task'))
 
     if task_index == 2:
-        question = "Was Patient 2 a smoker?"
+        question = "Was Insured Customer 2 a smoker?"
     else:  # task_index == 5
-        question = "Was Patient 5 below 35 years old?"
+        question = "Was Insured Customer 5 below 35 years old?"
     return render_template('attention_check.html', question=question, customer_number=task_index + 1)
 
 @app.route('/task', methods=['GET', 'POST'])
@@ -366,7 +394,7 @@ def task():
         max_retries = 3
         conn = None
         performance_wins = session.get('performance_wins', 0)
-        performance_score = 20 + (performance_wins * 13.33)  # Adjusted for 6 tasks: 0 wins = 20%, 1 win = 33.33%, ..., 6 wins = 100%
+        performance_score = min(100, 20 + performance_wins * 20)  # 0 wins = 20%, 1 win = 40%, 2 wins = 60%, 3 wins = 80%, 4+ wins = 100%
         bonus = (performance_score / 100) * 2.0
         attention_errors = session.get('attention_errors', 0)
         logging.info(f"Participant with Prolific ID {session.get('prolific_id')} performance: {performance_score}%, bonus: ${bonus:.2f}, attention_errors: {attention_errors}")
@@ -601,7 +629,7 @@ def end_with_error():
     max_retries = 3
     conn = None
     performance_wins = session.get('performance_wins', 0)
-    performance_score = 20 + (performance_wins * 13.33)  # Adjusted for 6 tasks
+    performance_score = min(100, 20 + performance_wins * 20)  # 0 wins = 20%, 1 win = 40%, 2 wins = 60%, 3 wins = 80%, 4+ wins = 100%
     bonus = (performance_score / 100) * 2.0
     attention_errors = session.get('attention_errors', 0)
     logging.info(f"Participant with Prolific ID {session.get('prolific_id')} ended early due to attention errors: {attention_errors}, performance: {performance_score}%, bonus: ${bonus:.2f}")
@@ -613,7 +641,7 @@ def end_with_error():
                 schema = [row[0] for row in cur.fetchall()]
                 logging.debug(f"Responses table schema: {schema}")
                 for response in session.get('responses', []):
-                    task_data = next(t for t in session['tasks'] if t['ID'] == response['ID'])
+                    task_data = next(t for t in tasks if t['ID'] == response['ID'])
                     uncertainty_level = task_data.get('uncertainty_level', 1)
                     try:
                         uncertainty_level = int(uncertainty_level)
@@ -664,7 +692,7 @@ def end_with_error():
     session.pop('tasks', None)
     session.pop('task_index', None)
     session.pop('attention_errors', None)
-    return render_template('end.html', performance_score=performance_score, ended_early=True)
+    return render_template('end.html', performance_score=performance_score)
 
 @app.route('/test-db')
 def test_db():

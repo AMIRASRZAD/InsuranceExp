@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Practice Attention Check: Patient {{ customer_number }}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Practice Attention Check: Patient {{ customer_number }}</h1>
+        <p>Please answer the following question to ensure you are paying attention:</p>
+        <p>{{ question }}</p>
+        <form action="{{ url_for('practice_attention_check') }}" method="post">
+            <div class="radio-container">
+                <label><input type="radio" name="answer" value="yes" required> Yes</label>
+                <label><input type="radio" name="answer" value="no"> No</label>
+            </div>
+            <div class="button-container">
+                <button type="submit">Submit</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
