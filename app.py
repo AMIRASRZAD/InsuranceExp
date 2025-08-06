@@ -390,14 +390,55 @@ def task():
     task_index = session.get('task_index', 0)
     tasks = session.get('tasks', [])
     logging.debug(f"Task route: task_index={task_index}, tasks_length={len(tasks)}")
+    
+    # Handle Likert form submission from end.html
+    if request.method == 'POST' and 'trust' in request.form:
+        max_retries = 3
+        conn = None
+        trust = int(request.form.get('trust', 0))
+        satisfaction = int(request.form.get('satisfaction', 0))
+        usefulness = int(request.form.get('usefulness', 0))
+        logging.debug(f"Saving survey responses: trust={trust}, satisfaction={satisfaction}, usefulness={usefulness}")
+        for attempt in range(max_retries):
+            conn = db_pool.getconn()
+            try:
+                with conn.cursor() as cur:
+                    # Update all records for the participant with survey responses
+                    cur.execute(
+                        "UPDATE responses SET trust = %s, satisfaction = %s, usefulness = %s "
+                        "WHERE prolific_id = %s",
+                        (trust, satisfaction, usefulness, session['prolific_id'])
+                    )
+                    conn.commit()
+                logging.info("Survey responses saved successfully")
+                break
+            except psycopg2.OperationalError as e:
+                logging.error(f"Database OperationalError on attempt {attempt + 1}: {str(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(2)
+                    continue
+                conn.close()
+                db_pool.putconn(conn, close=True)
+                return "Database connection failed after retries", 500
+            except Exception as e:
+                logging.error(f"Database error: {str(e)}")
+                conn.rollback()
+                db_pool.putconn(conn, close=True)
+                return f"Error saving survey data: {str(e)}", 500
+            finally:
+                if conn and not conn.closed:
+                    db_pool.putconn(conn)
+        completion_code = "C1X2Y3Z4"  # Static Prolific completion code
+        return render_template('end.html', completion_code=completion_code, submitted=True)
+
+    # Handle task logic
     if task_index >= 6:
         max_retries = 3
         conn = None
         performance_wins = session.get('performance_wins', 0)
-        performance_score = min(100, 20 + performance_wins * 20)  # 0 wins = 20%, 1 win = 40%, 2 wins = 60%, 3 wins = 80%, 4+ wins = 100%
-        bonus = (performance_score / 100) * 2.0
+        bonus = (min(100, 20 + performance_wins * 20) / 100) * 2.0
         attention_errors = session.get('attention_errors', 0)
-        logging.info(f"Participant with Prolific ID {session.get('prolific_id')} performance: {performance_score}%, bonus: ${bonus:.2f}, attention_errors: {attention_errors}")
+        logging.info(f"Participant with Prolific ID {session.get('prolific_id')} ended, bonus: ${bonus:.2f}, attention_errors: {attention_errors}")
         for attempt in range(max_retries):
             conn = db_pool.getconn()
             try:
@@ -425,13 +466,14 @@ def task():
                             task_data['true_charges'], task_data['age'], task_data['bmi'],
                             task_data['children'], task_data['smoker'], task_data['prediction_error'],
                             task_data['total_uncertainty_std'], task_data['epistemic_uncertainty_std'], task_data['aleatoric_uncertainty_std'],
-                            response['Task_Duration_ms'], response['Created_At'], attention_errors
+                            response['Task_Duration_ms'], log_response['Created_At'], attention_errors,
+                            None, None, None  # NULL for trust, satisfaction, usefulness
                         )
-                        logging.debug(f"INSERT arguments: {insert_args}")
                         cur.execute(
                             "INSERT INTO responses (prolific_id, task_number, condition, initial_guess, final_guess, predicted_charge, uncertainty_level, "
-                            "true_charge, age, bmi, children, smoker, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std, task_duration_ms, created_at, attention_errors) "
-                            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                            "true_charge, age, bmi, children, smoker, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std, "
+                            "task_duration_ms, created_at, attention_errors, trust, satisfaction, usefulness) "
+                            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                             insert_args
                         )
                     conn.commit()
@@ -457,7 +499,7 @@ def task():
         session.pop('tasks', None)
         session.pop('task_index', None)
         session.pop('attention_errors', None)
-        return render_template('end.html', performance_score=performance_score)
+        return render_template('end.html', completion_code=None, submitted=False)
 
     task_data = tasks[task_index]
     condition = session['condition']
@@ -629,10 +671,9 @@ def end_with_error():
     max_retries = 3
     conn = None
     performance_wins = session.get('performance_wins', 0)
-    performance_score = min(100, 20 + performance_wins * 20)  # 0 wins = 20%, 1 win = 40%, 2 wins = 60%, 3 wins = 80%, 4+ wins = 100%
-    bonus = (performance_score / 100) * 2.0
+    bonus = (min(100, 20 + performance_wins * 20) / 100) * 2.0
     attention_errors = session.get('attention_errors', 0)
-    logging.info(f"Participant with Prolific ID {session.get('prolific_id')} ended early due to attention errors: {attention_errors}, performance: {performance_score}%, bonus: ${bonus:.2f}")
+    logging.info(f"Participant with Prolific ID {session.get('prolific_id')} ended early due to attention errors: {attention_errors}, bonus: ${bonus:.2f}")
     for attempt in range(max_retries):
         conn = db_pool.getconn()
         try:
@@ -641,7 +682,7 @@ def end_with_error():
                 schema = [row[0] for row in cur.fetchall()]
                 logging.debug(f"Responses table schema: {schema}")
                 for response in session.get('responses', []):
-                    task_data = next(t for t in tasks if t['ID'] == response['ID'])
+                    task_data = next(t for t in session['tasks'] if t['ID'] == response['ID'])
                     uncertainty_level = task_data.get('uncertainty_level', 1)
                     try:
                         uncertainty_level = int(uncertainty_level)
@@ -660,14 +701,25 @@ def end_with_error():
                         task_data['true_charges'], task_data['age'], task_data['bmi'],
                         task_data['children'], task_data['smoker'], task_data['prediction_error'],
                         task_data['total_uncertainty_std'], task_data['epistemic_uncertainty_std'], task_data['aleatoric_uncertainty_std'],
-                        response['Task_Duration_ms'], response['Created_At'], attention_errors
+                        response['Task_Duration_ms'], log_response['Created_At'], attention_errors,
+                        None, None, None  # NULL for trust, satisfaction, usefulness
                     )
-                    logging.debug(f"INSERT arguments: {insert_args}")
                     cur.execute(
                         "INSERT INTO responses (prolific_id, task_number, condition, initial_guess, final_guess, predicted_charge, uncertainty_level, "
-                        "true_charge, age, bmi, children, smoker, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std, task_duration_ms, created_at, attention_errors) "
-                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                        "true_charge, age, bmi, children, smoker, prediction_error, total_uncertainty_std, epistemic_uncertainty_std, aleatoric_uncertainty_std, "
+                        "task_duration_ms, created_at, attention_errors, trust, satisfaction, usefulness) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                         insert_args
+                    )
+                if 'trust' in request.form:
+                    trust = int(request.form.get('trust', 0))
+                    satisfaction = int(request.form.get('satisfaction', 0))
+                    usefulness = int(request.form.get('usefulness', 0))
+                    logging.debug(f"Saving survey responses: trust={trust}, satisfaction={satisfaction}, usefulness={usefulness}")
+                    cur.execute(
+                        "UPDATE responses SET trust = %s, satisfaction = %s, usefulness = %s "
+                        "WHERE prolific_id = %s",
+                        (trust, satisfaction, usefulness, session['prolific_id'])
                     )
                 conn.commit()
             logging.info("Database commit successful")
@@ -692,7 +744,8 @@ def end_with_error():
     session.pop('tasks', None)
     session.pop('task_index', None)
     session.pop('attention_errors', None)
-    return render_template('end.html', performance_score=performance_score)
+    completion_code = "C1X2Y3Z4"  # Static Prolific completion code
+    return render_template('end.html', completion_code='trust' in request.form and completion_code, submitted='trust' in request.form)
 
 @app.route('/test-db')
 def test_db():
