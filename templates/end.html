@@ -16,10 +16,10 @@
     <div class="container">
         <h1>Thank You for Participating!</h1>
         {% if not submitted %}
-            <p id="instructions">Please provide your feedback on the AI algorithm used in this experiment:</p>
+            <p id="instructions">Please provide your feedback on the Automated Algorithm used in this experiment:</p>
             <form id="survey-form" action="{{ url_for('task') if not ended_early else url_for('end_with_error') }}" method="post" onsubmit="hideForm()">
                 <div class="section">
-                    <p>1. I trust that the AI algorithm’s prediction of medical costs.</p>
+                    <p>1. I trust that the Automated Algorithm’s prediction of medical costs.</p>
                     <div class="radio-container">
                         <label><input type="radio" name="trust" value="1" required> Strongly Disagree</label>
                         <label><input type="radio" name="trust" value="2"> Disagree</label>
@@ -29,7 +29,7 @@
                     </div>
                 </div>
                 <div class="section">
-                    <p>2. I am satisfied with using the AI algorithm’s prediction to make medical cost decisions.</p>
+                    <p>2. I am satisfied with using the Automated Algorithm’s prediction to make medical cost decisions.</p>
                     <div class="radio-container">
                         <label><input type="radio" name="satisfaction" value="1" required> Strongly Disagree</label>
                         <label><input type="radio" name="satisfaction" value="2"> Disagree</label>
@@ -39,7 +39,7 @@
                     </div>
                 </div>
                 <div class="section">
-                    <p>3. The AI algorithm’s prediction was useful for deciding medical costs.</p>
+                    <p>3. The Automated Algorithm’s prediction was useful for deciding medical costs.</p>
                     <div class="radio-container">
                         <label><input type="radio" name="usefulness" value="1" required> Strongly Disagree</label>
                         <label><input type="radio" name="usefulness" value="2"> Disagree</label>
